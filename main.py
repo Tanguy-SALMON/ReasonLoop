@@ -61,6 +61,7 @@ def main():
         update_setting("PROMPT_TEMPLATE", args.template)
         logger.info(f"Using prompt template: {args.template}")
 
+
     # Get objective
     objective = args.objective or get_setting("DEFAULT_OBJECTIVE")
     logger.info(f"Starting with objective: {objective}")

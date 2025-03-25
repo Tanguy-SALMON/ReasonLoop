@@ -24,7 +24,7 @@ def run_execution_loop(objective: str) -> bool:
         return False
 
     task_manager.print_task_list()
-
+ 
     # Execute tasks until none are left
     cycle_count = 0
     completed_tasks = 0

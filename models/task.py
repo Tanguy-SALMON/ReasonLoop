@@ -1,28 +1,42 @@
-"""
-Task model for representing tasks in the system
-"""
-
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
+from enum import Enum
 import json
 from datetime import datetime
+
+class TaskStatus(str, Enum):
+    """Valid task status values"""
+    INCOMPLETE = "incomplete"
+    COMPLETE = "complete"
+    FAILED = "failed"
+    IN_PROGRESS = "in_progress"
 
 @dataclass
 class Task:
     """Represents a task to be executed"""
     id: int
-    task: str = "Objective"
-    status: str = "incomplete"
+    description: str = "Objective"  # More descriptive name than 'task'
+    status: TaskStatus = TaskStatus.INCOMPLETE
     ability: str = "text-completion"
     dependent_task_ids: List[int] = field(default_factory=list)
     output: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-
-    # These fields will store any additional attributes
+    
+    # Dynamic attributes storage
     _additional_attributes: Dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self):
+        """Validate task after initialization"""
+        # Convert string status to enum if needed
+        if isinstance(self.status, str):
+            try:
+                self.status = TaskStatus(self.status)
+            except ValueError:
+                # Default to INCOMPLETE if invalid status
+                self.status = TaskStatus.INCOMPLETE
+    
     def __getattr__(self, name):
         """Allow access to additional attributes"""
         if name in self._additional_attributes:
@@ -34,7 +48,8 @@ class Task:
         """Create task from dictionary with flexible schema"""
         # Extract known fields
         task_id = data.pop("id")
-        status = data.pop("status", "incomplete")
+        description = data.pop("task", data.pop("description", "Objective"))
+        status = data.pop("status", TaskStatus.INCOMPLETE)
         ability = data.pop("ability", "text-completion")
         dependent_task_ids = data.pop("dependent_task_ids", [])
 
@@ -52,9 +67,10 @@ class Task:
         output = data.pop("output", None)
         metadata = data.pop("metadata", {})
 
-        # Store all remaining fields as additional attributes
+        # Create task instance
         task = cls(
             id=task_id,
+            description=description,
             status=status,
             ability=ability,
             dependent_task_ids=dependent_task_ids,
@@ -64,6 +80,7 @@ class Task:
             metadata=metadata
         )
 
+        # Store all remaining fields as additional attributes
         task._additional_attributes = data
         return task
 
@@ -71,7 +88,8 @@ class Task:
         """Convert task to dictionary"""
         result = {
             "id": self.id,
-            "status": self.status,
+            "task": self.description,  # Keep 'task' for backward compatibility
+            "status": self.status.value,  # Convert enum to string
             "ability": self.ability,
             "dependent_task_ids": self.dependent_task_ids,
             "output": self.output,
@@ -86,24 +104,26 @@ class Task:
 
     def __str__(self) -> str:
         """String representation of task"""
-        # Try to use task or insight field for description
-        description = self._additional_attributes.get("task",
-                      self._additional_attributes.get("insight",
-                      f"Task #{self.id}"))
-
+        # Use the main description field with fallbacks to dynamic attributes
+        display_desc = self._additional_attributes.get("insight", self.description)
         deps = f" (depends on: {self.dependent_task_ids})" if self.dependent_task_ids else ""
-        return f"Task #{self.id}: {description} [{self.status}] [{self.ability}]{deps}"
+        return f"Task #{self.id}: {display_desc} [{self.status.value}] [{self.ability}]{deps}"
 
     def mark_complete(self, output: str) -> None:
         """Mark task as complete with output"""
-        self.status = "complete"
+        self.status = TaskStatus.COMPLETE
         self.output = output
         self.completed_at = datetime.now()
-
-    def __str__(self) -> str:
-        """String representation of task"""
-        deps = f" (depends on: {self.dependent_task_ids})" if self.dependent_task_ids else ""
-        return f"Task #{self.id}: {self.task} [{self.status}] [{self.ability}]{deps}"
+        
+    def mark_failed(self, error_message: str) -> None:
+        """Mark task as failed with error message"""
+        self.status = TaskStatus.FAILED
+        self.output = f"ERROR: {error_message}"
+        self.completed_at = datetime.now()
+        
+    def mark_in_progress(self) -> None:
+        """Mark task as in progress"""
+        self.status = TaskStatus.IN_PROGRESS
 
     def to_json(self) -> str:
         """Convert task to JSON string"""

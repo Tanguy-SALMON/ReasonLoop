@@ -1,7 +1,7 @@
 ---
 name: ecommerce_performance_agent
 description: Specialized agent for Magento performance optimization
-author: Your Name
+author: ReasonLoop
 version: 1.0
 abilities:
   - text-completion

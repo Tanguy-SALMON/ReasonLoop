@@ -3,18 +3,14 @@ Task manager for creating, validating, and executing tasks
 """
 
 import logging
-import json
-import re
 import time
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import List, Optional
 from models.task import Task
 from models.result import Result
 from abilities.ability_registry import execute_ability
 from config.settings import get_setting
 from utils.json_parser import extract_json_from_text
 from utils.prompt_templates import get_prompt_template
-from config.settings import get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +32,13 @@ class TaskManager:
         # Get the selected prompt template
         template_name = get_setting("PROMPT_TEMPLATE", "default_tasks")
         prompt = get_prompt_template(template_name, objective=self.objective)
-
+ 
         logger.debug(f"Using prompt template: {template_name}")
         logger.debug(f"Sending task creation prompt: {prompt[:100]}...")
-
+ 
         # Execute the ability
         response = execute_ability("text-completion", prompt, task_id=0)  # task_id 0 for initial tasks
-
+          
         # Log the template usage
         log_prompt(
             prompt=prompt,
@@ -59,13 +55,11 @@ class TaskManager:
             # Try to extract JSON from the response
             logger.debug(f"Raw response: {response}")
             json_data = extract_json_from_text(response)
-
             if json_data:
                 # Convert to Task objects
-                tasks = [Task.from_dict(item) for item in json_data]
-                logger.info(f"Created {len(tasks)} initial tasks")
-                self.tasks = tasks
-                return tasks
+                self.tasks = [Task.from_dict(item) for item in json_data]
+                logger.info(f"Created {len(self.tasks)} initial tasks")
+                return self.tasks
             else:
                 raise ValueError("No valid JSON found in response")
         except Exception as e:
@@ -176,10 +170,12 @@ class TaskManager:
         task_description = getattr(task, "task",
                         getattr(task, "insight",
                         getattr(task, "action_item", str(task.id))))
-
+        print("==================")
+        print(task)
+        
         logger.info(f"Executing task #{task.id}: {task_description}")
         start_time = time.time()
-
+        exit()
         # Prepare context from dependent tasks
         dependent_outputs = ""
         if task.dependent_task_ids:
