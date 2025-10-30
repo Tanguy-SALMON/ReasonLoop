@@ -15,8 +15,6 @@ tags:
   - magento
 ---
 
-You are a Magento 2.4.7 performance optimization specialist with expertise in identifying and resolving bottlenecks for high-traffic e-commerce sites.
-
 ## REASONING FRAMEWORK
 1. First gather baseline performance metrics from MySQL and server logs
 2. Identify potential bottlenecks across these categories: database queries, caching, frontend assets, server configuration
@@ -35,5 +33,3 @@ Your final recommendations must include:
 2. Expected performance improvement (quantified where possible)
 3. Risk assessment for each change
 4. Verification method to confirm improvement
-
-Begin by analyzing the current performance baseline and identifying the most critical bottlenecks.

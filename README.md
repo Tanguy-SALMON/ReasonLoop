@@ -1,246 +1,117 @@
-# ReasonLoop
-The code is an AI-driven task automation system.
-ReasonLoop is a lightweight, autonomous task execution system that breaks down complex objectives into manageable tasks and executes them sequentially. It leverages language models and specialized abilities to accomplish user-defined goals with minimal human intervention.
+### README.md
 
-## Overview
+#### Project
+- Ultra-minimal async agent runner using Ollama (qwen3:4b-instruct) and plain SQL (aiomysql).
+- Files: app.py, abilities.py, agent_loader.py, memory.py, agent.yaml, .env
 
-ReasonLoop follows a cyclical reasoning process:
+#### Bootstrap
+- Root files to create:
+  - app.py
+  - abilities.py
+  - agent_loader.py
+  - memory.py
+  - agent.yaml
+  - .env
 
-1. **Task Planning**: Analyzes the objective and creates a structured task list
-2. **Task Execution**: Executes tasks in dependency order using specialized abilities
-3. **Context Management**: Maintains context between tasks for coherent reasoning
-4. **Result Synthesis**: Combines task outputs into a comprehensive summary
+#### .env (example)
+- OLLAMA_HOST=http://localhost:11434
+- DB_HOST=127.0.0.1
+- DB_PORT=3306
+- DB_USER=magento
+- DB_PASS=secret
+- DB_NAME=magento_db
 
-## Features
+#### Quickstart commands
+- Pull model in Ollama:
+  - ollama pull qwen3:4b-instruct
+- Run the agent:
+  - python app.py --objective "Plan a nice travel in Bangkok" --agent agent.yaml
 
-- **Modular Ability System**: Easily add, remove, or modify capabilities
-- **Dependency Management**: Tasks can depend on outputs from previous tasks
-- **Flexible Configuration**: Configure via environment variables or command line
-- **Robust Error Handling**: Automatic retries and graceful fallbacks
-- **Comprehensive Logging**: Detailed execution logs for debugging
+#### Example agent.yaml (Magento performance)
+```
+---
+name: ecommerce_performance_agent
+description: Specialized agent for Magento performance optimization
+author: ReasonLoop
+version: 1.0
+abilities:
+  - text-completion
+  - web-search
+  - web-scrape
+  - mysql-schema
+  - mysql-query
+tags:
+  - ecommerce
+  - performance
+  - magento
+---
 
-## Abilities
+## REASONING FRAMEWORK
+1. First gather baseline performance metrics from MySQL and server logs
+2. Identify potential bottlenecks across these categories: database queries, caching, frontend assets, server configuration
+3. For each potential issue, estimate impact using this formula: (frequency × severity × ease of fix)
+4. Prioritize optimizations that will provide the greatest performance improvement with minimal risk
 
-ReasonLoop comes with several built-in abilities:
+## DECISION CRITERIA
+When recommending changes, evaluate each option against these weighted factors:
+- Performance impact: 40%
+- Implementation complexity: 30%
+- Stability risk: 30%
 
-- **Text Completion**: Reasoning, analysis, and synthesis using LLMs
-- **Web Search**: Finding information online via DuckDuckGo
-- **Web Scraping**: Extracting content from specific URLs
-- **Database Queries**: Exploring database schemas and executing SQL queries
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/reasonloop.git
-cd reasonloop
-
-# Install dependencies
-pip install -r requirements.txt
-
-
-## Usage
-
-```bash
-# Basic usage
-python main.py --objective "Create a 3-day itinerary for Bangkok"
-
-# With custom model and verbose logging
-python main.py --objective "Analyze sales data" --model llama3 --verbose
+## REQUIRED OUTPUT
+Your final recommendations must include:
+1. Specific, actionable changes with implementation steps
+2. Expected performance improvement (quantified where possible)
+3. Risk assessment for each change
+4. Verification method to confirm improvement
 ```
 
-## Configuration
+#### Use cases
 
-```
-# LLM configuration
-export REASONLOOP_LLM_MODEL="llama3"
-export REASONLOOP_LLM_TEMPERATURE="0.1"
+- Magento performance assessment (MySQL + reasoning)
+  - Objective: "Identify slow queries in checkout and propose fixes"
+  - Flow:
+    - mysql-schema: introspect key tables (sales, quote, inventory)
+    - mysql-query: run EXPLAIN on known heavy queries
+    - web-search: gather known Magento 2.4.7 tuning tips
+    - text-completion: synthesize prioritized recommendations
+  - Command:
+    - python app.py --objective "Identify slow queries in checkout and propose fixes" --agent agent.yaml
 
-# Database configuration
-export REASONLOOP_DB_HOST="localhost"
-export REASONLOOP_DB_USER="username"
-export REASONLOOP_DB_PASSWORD="password"
-export REASONLOOP_DB_NAME="database"
+- Cache/cdn validation
+  - Objective: "Assess cache hit ratio problems and propose Nginx/Redis tuning"
+  - Flow:
+    - mysql-query: read cache-related metrics if stored; or plan inspection steps
+    - web-search: pull best-practices for Magento FPC + Redis
+    - text-completion: output concrete Nginx/Redis config adjustments with impact/risk
+  - Command:
+    - python app.py --objective "Assess cache hit ratio problems and propose Nginx/Redis tuning" --agent agent.yaml
 
-# Web search configuration
-export REASONLOOP_WEB SEARCH_ENABLED="true"
-export REASONLOOP_WEB SEARCH_RESULTS="5"
-```
+- Frontend asset optimization
+  - Objective: "Reduce TTFB and payload for homepage"
+  - Flow:
+    - web-scrape: fetch homepage HTML (internal URL)
+    - text-completion: identify heavy assets, bundling/minification opportunities, HTTP/2 hints
+    - web-search: cross-check with Magento frontend guidelines
+  - Command:
+    - python app.py --objective "Reduce TTFB and payload for homepage" --agent agent.yaml
 
-# Project Structure
-reasonloop/
-├── abilities/            # Individual capabilities
-│   ├── ability_registry.py
-│   ├── text_completion.py
-│   ├── Web Search.py
-│   ├── web_scrape.py
-│   └── mysql_abilities.py
-├── config/               # Configuration settings
-│   ├── settings.py
-│   └── logging_config.py
-├── core/                 # Core execution logic
-│   ├── execution_loop.py
-│   └── task_manager.py
-├── models/               # Data models
-│   ├── task.py
-│   └── result.py
-├── utils/                # Utility functions
-│   └── json_parser.py
-├── logs/                 # Log files (created at runtime)
-├── main.py               # Entry point
-└── requirements.txt      # Dependencies
+- Incident postmortem summarization
+  - Objective: "Summarize last incident with DB overload and propose guardrails"
+  - Flow:
+    - mysql-query: fetch slow log/metrics snapshots
+    - text-completion: timeline + root cause + mitigations
+  - Command:
+    - python app.py --objective "Summarize last incident with DB overload and propose guardrails" --agent agent.yaml
 
-# Extending ReasonLoop
-Adding a New Ability
+#### Memory (optional, prepared)
+- Table: agent_memories (good/bad results for later recall).
+- First-time schema:
+  - In code: call ensure_schema() from memory.py before run.
+- Save result (later):
+  - save_memory(agent_name, objective, tags, input_text, output_text, label="good"|"bad")
 
-    Create a new file in the abilities/ directory
-    Implement your ability function
-    Register it with the ability registry
-    Update the task creation prompt in core/task_manager.py
-
-
-    Claude Sonnet 3.7
-
-markdown
-
-Copy Code
-# ReasonLoop
-
-ReasonLoop is a lightweight, autonomous task execution system that breaks down complex objectives into manageable tasks and executes them sequentially. It leverages language models and specialized abilities to accomplish user-defined goals with minimal human intervention.
-
-## Overview
-
-ReasonLoop follows a cyclical reasoning process:
-
-1. **Task Planning**: Analyzes the objective and creates a structured task list
-2. **Task Execution**: Executes tasks in dependency order using specialized abilities
-3. **Context Management**: Maintains context between tasks for coherent reasoning
-4. **Result Synthesis**: Combines task outputs into a comprehensive summary
-
-## Features
-
-- **Modular Ability System**: Easily add, remove, or modify capabilities
-- **Dependency Management**: Tasks can depend on outputs from previous tasks
-- **Flexible Configuration**: Configure via environment variables or command line
-- **Robust Error Handling**: Automatic retries and graceful fallbacks
-- **Comprehensive Logging**: Detailed execution logs for debugging
-
-## Abilities
-
-ReasonLoop comes with several built-in abilities:
-
-- **Text Completion**: Reasoning, analysis, and synthesis using LLMs
-- **Web Search**: Finding information online via DuckDuckGo
-- **Web Scraping**: Extracting content from specific URLs
-- **Database Queries**: Exploring database schemas and executing SQL queries
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/reasonloop.git
-cd reasonloop
-
-# Install dependencies
-pip install -r requirements.txt
-
-Usage
-
-bash
-
-Copy Code
-# Basic usage
-python main.py --objective "Create a 3-day itinerary for Bangkok"
-
-# With custom model and verbose logging
-python main.py --objective "Analyze sales data" --model llama3 --verbose
-
-Configuration
-
-ReasonLoop can be configured via environment variables:
-
-bash
-
-Copy Code
-# LLM configuration
-export REASONLOOP_LLM_MODEL="llama3"
-export REASONLOOP_LLM_TEMPERATURE="0.1"
-
-# Database configuration
-export REASONLOOP_DB_HOST="localhost"
-export REASONLOOP_DB_USER="username"
-export REASONLOOP_DB_PASSWORD="password"
-export REASONLOOP_DB_NAME="database"
-
-# Web search configuration
-export REASONLOOP_WEB SEARCH_ENABLED="true"
-export REASONLOOP_WEB SEARCH_RESULTS="5"
-
-Project Structure
-
-reasonloop/
-├── abilities/            # Individual capabilities
-│   ├── ability_registry.py
-│   ├── text_completion.py
-│   ├── Web Search.py
-│   ├── web_scrape.py
-│   └── mysql_abilities.py
-├── config/               # Configuration settings
-│   ├── settings.py
-│   └── logging_config.py
-├── core/                 # Core execution logic
-│   ├── execution_loop.py
-│   └── task_manager.py
-├── models/               # Data models
-│   ├── task.py
-│   └── result.py
-├── utils/                # Utility functions
-│   └── json_parser.py
-├── logs/                 # Log files (created at runtime)
-├── main.py               # Entry point
-└── requirements.txt      # Dependencies
-
-Extending ReasonLoop
-Adding a New Ability
-
-    Create a new file in the abilities/ directory
-    Implement your ability function
-    Register it with the ability registry
-    Update the task creation prompt in core/task_manager.py
-
-Example:
-
-python
-
-Copy Code
-# abilities/image_generation.py
-def image_generation_ability(prompt: str) -> str:
-    # Implementation here
-    return "URL to generated image"
-
-# Register this ability
-from abilities.ability_registry import register_ability
-register_ability("image-generation", image_generation_ability)
-
-Use Cases
-
-    Research Assistant: Gather and synthesize information on specific topics
-    Data Analysis: Query databases and analyze results
-    Content Creation: Generate structured content based on research
-    Task Automation: Break down complex objectives into executable steps
-
-Requirements
-
-    Python 3.8+
-    Required packages listed in requirements.txt
-    Internet connection for web-based abilities
-    MySQL database for database abilities (optional)
-
-License
-
-MIT License
-Acknowledgements
-
-ReasonLoop is inspired by BabyCatAGI (https://replit.com/@YoheiNakajima/BabyCatAGI#main.py), a fork form BabyAGI and other autonomous agent frameworks that leverage language models for task execution.
-
-Note: ReasonLoop is designed for educational and research purposes. Always review the outputs and ensure they meet your requirements before using them in production environments.
+#### Notes
+- Async-first; simple concurrency limiting (no retries, fail fast).
+- Plain SQL only; if DB not reachable during mysql-* ability, app exits with error.
+- Tags are metadata for later routing/analytics; not used in execution flow yet.
