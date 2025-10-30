@@ -1,6 +1,7 @@
 """
 Registry of all available abilities
 """
+
 import logging
 import time
 from typing import Dict, Callable, Any, Optional
@@ -10,10 +11,12 @@ logger = logging.getLogger(__name__)
 # Dictionary to store all registered abilities
 ABILITY_REGISTRY: Dict[str, Callable] = {}
 
+
 def register_ability(name: str, func: Callable) -> None:
     """Register an ability function with a name"""
     logger.debug(f"Registering ability: {name}")
     ABILITY_REGISTRY[name] = func
+
 
 def get_ability(name: str) -> Optional[Callable]:
     """Get an ability function by name"""
@@ -22,9 +25,11 @@ def get_ability(name: str) -> Optional[Callable]:
         logger.warning(f"Ability not found: {name}")
     return ability
 
+
 def list_abilities() -> Dict[str, Callable]:
     """List all registered abilities"""
     return ABILITY_REGISTRY.copy()
+
 
 def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
     """Execute an ability by name with arguments"""
@@ -37,11 +42,17 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
 
     logger.debug(f"Executing ability: {name}")
 
-    # Extract task_id from kwargs if present
+    # Extract task_id and role from kwargs if present
     task_id = kwargs.pop("task_id", None)
+    role = kwargs.pop("role", None)
 
     # Get the prompt (usually the first argument for text abilities)
     prompt = args[0] if args and isinstance(args[0], str) else str(args)
+
+    # For text-completion ability, add role to kwargs if provided
+    if name == "text-completion" and role:
+        kwargs["role"] = role
+        logger.debug(f"Using role: {role} for text-completion")
 
     # Execute the ability and capture the response
     start_time = time.time()
@@ -57,9 +68,10 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
             task_id=task_id,
             metadata={
                 "execution_time": execution_time,
+                "role": role,
                 "args": str(args[1:]) if len(args) > 1 else None,
-                "kwargs": str(kwargs) if kwargs else None
-            }
+                "kwargs": str(kwargs) if kwargs else None,
+            },
         )
 
         return response
@@ -74,10 +86,10 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
             task_id=task_id,
             metadata={
                 "execution_time": execution_time,
+                "role": role,
                 "error": str(e),
                 "args": str(args[1:]) if len(args) > 1 else None,
-                "kwargs": str(kwargs) if kwargs else None
-            }
+                "kwargs": str(kwargs) if kwargs else None,
+            },
         )
         raise
-    

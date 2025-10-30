@@ -1,12 +1,11 @@
 # switch_provider.py
-#
+# https://docs.anthropic.com/en/docs/about-claude/models/all-models
 # python switch_provider.py ollama --model llama2
 #
 # python switch_provider.py anthropic --key "your-anthropic-api-key" --model "claude-instant-1.2"
 #
 # python switch_provider.py openai --key "your-openai-api-key" --model "gpt-4"
 #
-
 
 import os
 import argparse

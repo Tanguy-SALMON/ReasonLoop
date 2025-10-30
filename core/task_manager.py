@@ -14,6 +14,7 @@ from utils.prompt_templates import get_prompt_template
 
 logger = logging.getLogger(__name__)
 
+
 class TaskManager:
     """Manages tasks in the system"""
 
@@ -32,13 +33,15 @@ class TaskManager:
         # Get the selected prompt template
         template_name = get_setting("PROMPT_TEMPLATE", "default_tasks")
         prompt = get_prompt_template(template_name, objective=self.objective)
- 
+
         logger.debug(f"Using prompt template: {template_name}")
         logger.debug(f"Sending task creation prompt: {prompt[:100]}...")
- 
-        # Execute the ability
-        response = execute_ability("text-completion", prompt, task_id=0)  # task_id 0 for initial tasks
-          
+
+        # Execute the ability using planner model for task creation
+        response = execute_ability(
+            "text-completion", prompt, task_id=0, role="planner"
+        )  # task_id 0 for initial tasks
+
         # Log the template usage
         log_prompt(
             prompt=prompt,
@@ -46,10 +49,10 @@ class TaskManager:
             template_name=template_name,
             ability="text-completion",
             task_id=0,
-            metadata={"objective": self.objective}
+            metadata={"objective": self.objective},
         )
 
-         # Rest of the function remains the same
+        # Rest of the function remains the same
 
         try:
             # Try to extract JSON from the response
@@ -88,20 +91,28 @@ class TaskManager:
             Return ONLY the JSON array without any explanation.
             """
 
-            logger.debug("Attempting to generate structured tasks from unstructured response")
-            structured_response = execute_ability("text-completion", prompt)
+            logger.debug(
+                "Attempting to generate structured tasks from unstructured response"
+            )
+            structured_response = execute_ability(
+                "text-completion", prompt, role="planner"
+            )
 
             # Try to extract JSON again
             json_data = extract_json_from_text(structured_response)
 
             if json_data:
                 tasks = [Task.from_dict(item) for item in json_data]
-                logger.info(f"Successfully created {len(tasks)} tasks from unstructured response")
+                logger.info(
+                    f"Successfully created {len(tasks)} tasks from unstructured response"
+                )
                 self.tasks = tasks
                 return tasks
 
             # If still failing, create a minimal task list
-            logger.warning("Could not extract structured tasks, creating minimal task list")
+            logger.warning(
+                "Could not extract structured tasks, creating minimal task list"
+            )
             return self._create_minimal_task_list()
         except Exception as e:
             logger.error(f"Error in fallback task generation: {str(e)}")
@@ -118,15 +129,15 @@ class TaskManager:
                 task=f"Research information related to: {self.objective}",
                 ability="web-search",
                 dependent_task_ids=[],
-                status="incomplete"
+                status="incomplete",
             ),
             Task(
                 id=2,
                 task=f"Create a final summary report for the objective: {self.objective}",
                 ability="text-completion",
                 dependent_task_ids=[1],
-                status="incomplete"
-            )
+                status="incomplete",
+            ),
         ]
 
         logger.info(f"Created minimal task list with {len(tasks)} tasks")
@@ -152,7 +163,9 @@ class TaskManager:
                     dependent_task = self.get_task_by_id(dep_id)
                     if not dependent_task or dependent_task.status != "complete":
                         can_execute = False
-                        logger.debug(f"Task #{task.id} has incomplete dependency #{dep_id}")
+                        logger.debug(
+                            f"Task #{task.id} has incomplete dependency #{dep_id}"
+                        )
                         break
 
                 if can_execute:
@@ -166,16 +179,21 @@ class TaskManager:
         """Execute a task and return the result"""
         from utils.prompt_logger import log_prompt
 
-        # Get task description based on template type
-        task_description = getattr(task, "task",
-                        getattr(task, "insight",
-                        getattr(task, "action_item", str(task.id))))
-        print("==================")
-        print(task)
-        
+        # Fix the task description retrieval
+        if hasattr(task, "description"):
+            task_description = task.description
+        elif hasattr(task, "task"):
+            task_description = task.task
+        elif hasattr(task, "insight"):
+            task_description = task.insight
+        elif hasattr(task, "action_item"):
+            task_description = task.action_item
+        else:
+            task_description = f"Task #{task.id}"  # Fallback to a simple string
+
         logger.info(f"Executing task #{task.id}: {task_description}")
         start_time = time.time()
-        exit()
+
         # Prepare context from dependent tasks
         dependent_outputs = ""
         if task.dependent_task_ids:
@@ -188,15 +206,23 @@ class TaskManager:
                     dependent_outputs += f"\n\nOutput from task #{dep_id}:\n{dependent_task.output[:500]}..."
 
         # Prepare prompt for text-completion
-        task_prompt = f"Complete this task: {task_description}\nObjective: {self.objective}"
+        task_prompt = (
+            f"Complete this task: {task_description}\nObjective: {self.objective}"
+        )
 
         if dependent_outputs:
-            task_prompt += f"\n\nUse this information from previous tasks:{dependent_outputs}"
+            task_prompt += (
+                f"\n\nUse this information from previous tasks:{dependent_outputs}"
+            )
 
         try:
             # Execute the ability
             if task.ability == "text-completion":
-                output = execute_ability(task.ability, task_prompt, task_id=task.id)
+                # Determine role based on task context
+                role = self._determine_task_role(task)
+                output = execute_ability(
+                    task.ability, task_prompt, task_id=task.id, role=role
+                )
             else:
                 # For other abilities, extract parameters from the task description
                 ability_input = task_description
@@ -211,8 +237,8 @@ class TaskManager:
                 metadata={
                     "task_description": task_description,
                     "dependent_task_ids": task.dependent_task_ids,
-                    "execution_time": time.time() - start_time
-                }
+                    "execution_time": time.time() - start_time,
+                },
             )
 
             # Update task status
@@ -227,7 +253,7 @@ class TaskManager:
                 task_id=task.id,
                 content=output,
                 success=True,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
 
             logger.info(f"Task #{task.id} completed in {execution_time:.2f}s")
@@ -250,18 +276,26 @@ class TaskManager:
 
                 # If execution failed but didn't raise an exception
                 if attempt < max_retries:
-                    logger.warning(f"Task #{task.id} failed, retrying ({attempt+1}/{max_retries}): {result.error}")
+                    logger.warning(
+                        f"Task #{task.id} failed, retrying ({attempt + 1}/{max_retries}): {result.error}"
+                    )
                     time.sleep(retry_delay)
                 else:
-                    logger.error(f"Task #{task.id} failed after {max_retries} retries: {result.error}")
+                    logger.error(
+                        f"Task #{task.id} failed after {max_retries} retries: {result.error}"
+                    )
                     return result
 
             except Exception as e:
                 if attempt < max_retries:
-                    logger.warning(f"Task #{task.id} failed with exception, retrying ({attempt+1}/{max_retries}): {str(e)}")
+                    logger.warning(
+                        f"Task #{task.id} failed with exception, retrying ({attempt + 1}/{max_retries}): {str(e)}"
+                    )
                     time.sleep(retry_delay)
                 else:
-                    logger.error(f"Task #{task.id} failed after {max_retries} retries: {str(e)}")
+                    logger.error(
+                        f"Task #{task.id} failed after {max_retries} retries: {str(e)}"
+                    )
                     return Result.error_result(task.id, str(e))
 
         # Should never reach here, but just in case
@@ -277,3 +311,47 @@ class TaskManager:
     def get_session_summary(self) -> str:
         """Get the current session summary"""
         return self.session_summary
+
+    def _determine_task_role(self, task: Task) -> str:
+        """Determine which AI role to use for a given task"""
+        # Get task description properly
+        if hasattr(task, "description"):
+            task_description = task.description
+        elif hasattr(task, "task"):
+            task_description = task.task
+        else:
+            task_description = str(task)
+
+        task_lower = task_description.lower()
+
+        # Task creation and planning
+        if any(
+            keyword in task_lower
+            for keyword in ["create", "plan", "design", "outline", "structure"]
+        ):
+            return "planner"
+
+        # Review and analysis tasks
+        elif any(
+            keyword in task_lower
+            for keyword in ["review", "analyze", "evaluate", "check", "validate"]
+        ):
+            return "reviewer"
+
+        # Execution tasks
+        elif any(
+            keyword in task_lower
+            for keyword in [
+                "execute",
+                "implement",
+                "generate",
+                "create",
+                "write",
+                "produce",
+            ]
+        ):
+            return "executor"
+
+        # Default to orchestrator for coordination tasks
+        else:
+            return "orchestrator"

@@ -16,7 +16,7 @@ def mysql_schema_ability(table_name: Optional[str] = None) -> str:
        - Each file registers its own ability
     """
     from abilities.mysql_abilities import execute_query
-    
+
     logger.debug(f"ABILITY CALLED: mysql-schema for table: {table_name}")
     start_time = time.time()
 
@@ -58,7 +58,7 @@ def mysql_schema_ability(table_name: Optional[str] = None) -> str:
             result = f"Table: {table_name}\n\nColumns:\n"
             for col in columns:
                 result += (f"- {col['COLUMN_NAME']} ({col['DATA_TYPE']}"
-                          f"{f'({col['CHARACTER_MAXIMUM_LENGTH']})' if col['CHARACTER_MAXIMUM_LENGTH'] else ''}"
+                          f"{ {col['CHARACTER_MAXIMUM_LENGTH']} if col['CHARACTER_MAXIMUM_LENGTH'] else ''}"
                           f") {'PRIMARY KEY' if col['COLUMN_KEY'] == 'PRI' else ''}"
                           f" {'NOT NULL' if col['IS_NULLABLE'] == 'NO' else ''}\n")
 

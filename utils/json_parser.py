@@ -27,7 +27,8 @@ def extract_json_from_text(text: str) -> Optional[List[Dict[str, Any]]]:
             json_str = json_str.replace("'", '"')
             return json.loads(json_str)
         except json.JSONDecodeError:
-            logger.debug("Failed to parse JSON with regex match")
+            logger.debug("Failed to parse JSON with regex match xx")
+            exit()
 
     # Try to find JSON objects and combine them
     try:

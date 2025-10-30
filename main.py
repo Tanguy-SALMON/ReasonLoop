@@ -15,16 +15,36 @@ from abilities.ability_registry import list_abilities
 from utils.metrics import MetricsManager
 from utils.llm_utils import test_llm_service
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()  # Load .env file
+except ImportError:
+    pass  # python-dotenv not installed, environment variables will still work
+
+
 def main():
     """Main entry point"""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="ReasonLoop - A modular AI agent system")
+    parser = argparse.ArgumentParser(
+        description="ReasonLoop - A modular AI agent system"
+    )
     parser.add_argument("--objective", "-o", type=str, help="The objective to achieve")
-    parser.add_argument("--template", "-t", type=str, default="default_tasks",
-                      help="Prompt template to use (default_tasks, marketing_insights, propensity_modeling)")
+    parser.add_argument(
+        "--template",
+        "-t",
+        type=str,
+        default="default_tasks",
+        help="Prompt template to use (default_tasks, marketing_insights, propensity_modeling)",
+    )
     parser.add_argument("--model", "-m", type=str, help="LLM model to use")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
-    parser.add_argument("--list-abilities", "-l", action="store_true", help="List available abilities")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
+    )
+    parser.add_argument(
+        "--list-abilities", "-l", action="store_true", help="List available abilities"
+    )
 
     args = parser.parse_args()
 
@@ -40,7 +60,9 @@ def main():
 
     # Print banner
     print("\n" + "=" * 80)
-    print(f"ReasonLoop v0.1.0 - Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        f"ReasonLoop v0.1.0 - Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
     print("=" * 80 + "\n")
 
     # List abilities if requested
@@ -51,9 +73,17 @@ def main():
             print(f"- {name}")
         return
 
-    # Update settings from command line
+    # Update settings from command line - use provider-specific model
     if args.model:
-        update_setting("LLM_MODEL", args.model)
+        provider = get_setting("LLM_PROVIDER", "zai").lower()
+        if provider == "zai":
+            update_setting("ZAI_MODEL", args.model)
+        elif provider == "ollama":
+            update_setting("OLLAMA_MODEL", args.model)
+        elif provider == "openai":
+            update_setting("OPENAI_MODEL", args.model)
+        elif provider == "anthropic":
+            update_setting("ANTHROPIC_MODEL", args.model)
         logger.info(f"Using model: {args.model}")
 
     # Set the prompt template
@@ -61,23 +91,40 @@ def main():
         update_setting("PROMPT_TEMPLATE", args.template)
         logger.info(f"Using prompt template: {args.template}")
 
-
     # Get objective
     objective = args.objective or get_setting("DEFAULT_OBJECTIVE")
     logger.info(f"Starting with objective: {objective}")
 
     # Print configuration
-    print(f"Model: {get_setting('LLM_MODEL')}")
+    provider = get_setting("LLM_PROVIDER", "zai").lower()
+    if provider == "zai":
+        model = get_setting("ZAI_MODEL", "glm-4.6")
+    elif provider == "ollama":
+        model = get_setting("OLLAMA_MODEL", "llama3")
+    elif provider == "openai":
+        model = get_setting("OPENAI_MODEL", "gpt-3.5-turbo")
+    elif provider == "anthropic":
+        model = get_setting("ANTHROPIC_MODEL", "claude-instant-1.2")
+    else:
+        model = "unknown"
+
+    print(f"Provider: {provider}")
+    print(f"Model: {model}")
     print(f"Template: {get_setting('PROMPT_TEMPLATE')}")
     print(f"Objective: {objective}")
     print("-" * 80 + "\n")
 
-    # Test LLM service before running
-    llm_success, llm_message = test_llm_service()
-    if not llm_success:
-        logger.error(f"LLM service test failed: {llm_message}")
-        print(f"\nError: LLM service is not available. {llm_message}")
-        return
+    # Test LLM service before running (skip if --skip-test)
+    if "--skip-test" not in sys.argv:
+        llm_success, llm_message = test_llm_service()
+        if not llm_success:
+            logger.error(f"LLM service test failed: {llm_message}")
+            print(f"\nError: LLM service is not available. {llm_message}")
+            return
+    else:
+        logger.info("LLM service test passed")
+    else:
+        logger.info("Skipping LLM service test due to --skip-test flag")
 
     # Run the execution loop
     try:
@@ -102,6 +149,7 @@ def main():
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}", exc_info=True)
         print(f"\nError: {str(e)}")
+
 
 if __name__ == "__main__":
     main()
