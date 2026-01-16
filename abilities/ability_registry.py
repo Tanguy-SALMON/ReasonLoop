@@ -2,6 +2,8 @@
 Registry of all available abilities
 """
 
+import asyncio
+import inspect
 import logging
 import time
 from typing import Dict, Callable, Any, Optional
@@ -58,7 +60,18 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
     # Execute the ability and capture the response
     start_time = time.time()
     try:
+        # Check if ability is async (coroutine)
         result = ability(*args, **kwargs)
+        if inspect.iscoroutine(result):
+            # Check if we're already in an event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in a loop, shouldn't happen in sync context
+                logger.warning("Async ability called from within event loop - this may cause issues")
+            except RuntimeError:
+                # No loop running, safe to use asyncio.run()
+                result = asyncio.run(result)
+
         execution_time = time.time() - start_time
 
         # Handle tuple response (response, usage_dict) from text-completion
