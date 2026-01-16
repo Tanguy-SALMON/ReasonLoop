@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 # Pricing per 1M tokens (prompt/completion) in USD
 PRICING = {
     "xai": {
-        "grok-2-1212": (200.00, 1000.00),
-        "grok-2-vision-1212": (200.00, 1000.00),
-        "grok-beta": (500.00, 1500.00),
+        "grok-2-1212": (0.20, 0.50),      # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
+        "grok-2-vision-1212": (0.20, 0.50), # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
+        "grok-beta": (0.50, 1.50),          # Input $0.50 per 1M tokens, Output $1.50 per 1M tokens
         "grok-4-1-fast-non-reasoning": (0.20, 0.50),  # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
     }
 }
@@ -26,7 +26,7 @@ def estimate_tokens(text: str) -> int:
 
 
 def calculate_cost(provider: str, model: str, prompt_tokens: int, completion_tokens: int, cached_tokens: int = 0) -> float:
-    """Calculate cost in USD based on provider pricing (per 1M tokens)"""
+    """Calculate cost in USD based on provider pricing (per 1 million tokens)"""
     provider_pricing = PRICING.get(provider.lower(), {})
     model_pricing = provider_pricing.get(model, provider_pricing.get("default", (0.0, 0.0)))
 
@@ -37,7 +37,7 @@ def calculate_cost(provider: str, model: str, prompt_tokens: int, completion_tok
     prompt_cost = (regular_prompt_tokens / 1_000_000) * prompt_price
 
     # Cached input cost (cheaper)
-    cached_cost = (cached_tokens / 1_000_000) * 0.05  # $0.05 per M for cached input
+    cached_cost = (cached_tokens / 1_000_000) * 0.05  # $0.05 per million for cached input
 
     # Completion/output cost
     completion_cost = (completion_tokens / 1_000_000) * completion_price
@@ -116,9 +116,9 @@ class XAIProvider:
         # Use actual cost from API if available, otherwise calculate
         cost_usd = usage.get("cost_in_usd_ticks", 0)
         if cost_usd:
-            # Convert from ticks to USD (ticks ÷ 10,000 = USD)
-            # XAI provides cost_in_usd_ticks, need to convert to USD
-            cost_usd = cost_usd / 10000.0
+            # Convert from ticks to USD (ticks ÷ 10,000,000 = USD)
+            # XAI provides cost_in_usd_ticks, convert to USD for per-million-token pricing
+            cost_usd = cost_usd / 10000000.0
         else:
             # Get cached tokens from API response
             cached_tokens = usage.get("prompt_tokens_details", {}).get("cached_tokens", 0)
