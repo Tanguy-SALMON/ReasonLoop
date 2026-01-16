@@ -94,13 +94,14 @@ class ReasonLoopCLI:
             return False
 
         start_time = time.time()
-        success = run_execution_loop(self.config.objective)
+        result_file = run_execution_loop(self.config.objective)
         end_time = time.time()
 
         # Display results
         elapsed = end_time - start_time
-        if success:
+        if result_file:
             print(f"\n✓ Execution completed in {elapsed:.2f} seconds")
+            print(f"\n📄 Results saved to: {result_file}")
         else:
             print(f"\n✗ Execution failed after {elapsed:.2f} seconds")
 
@@ -108,7 +109,7 @@ class ReasonLoopCLI:
         self.metrics.save_session()
         print(f"Metrics saved to logs/ directory")
 
-        return success
+        return bool(result_file)
 
     async def run(self) -> int:
         """Main execution flow"""

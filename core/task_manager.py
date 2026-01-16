@@ -98,14 +98,7 @@ class TaskManager:
         else:
             output = execute_ability(task.ability, task_desc, task_id=task.id)
 
-        # Log execution
-        log_prompt(
-            prompt=task_prompt,
-            response=output,
-            ability=task.ability,
-            task_id=task.id,
-            metadata={"task_description": task_desc},
-        )
+        # Log execution is handled by execute_ability in ability_registry
 
         # Update task
         task.mark_complete(output)
