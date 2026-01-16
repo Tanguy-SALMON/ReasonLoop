@@ -26,10 +26,20 @@ def log_prompt(
     template_name: Optional[str] = None,
     ability: Optional[str] = None,
     task_id: Optional[int] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    usage: Optional[Dict[str, Any]] = None
 ) -> None:
     """
-    Log a prompt and its response with metadata
+    Log a prompt and its response with metadata and usage tracking
+
+    Args:
+        usage: Dict containing token usage and cost info:
+            - prompt_tokens: int
+            - completion_tokens: int
+            - total_tokens: int
+            - model: str
+            - provider: str
+            - cost_usd: float
     """
     if not PROMPT_LOG_ENABLED:
         return
@@ -43,7 +53,8 @@ def log_prompt(
         "task_id": task_id,
         "prompt": prompt,
         "response": response,
-        "metadata": metadata or {}
+        "metadata": metadata or{},
+        "usage": usage or {}
     }
 
     # Log to the application log

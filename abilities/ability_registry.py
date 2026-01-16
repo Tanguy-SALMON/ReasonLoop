@@ -49,18 +49,26 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
     # Get the prompt (usually the first argument for text abilities)
     prompt = args[0] if args and isinstance(args[0], str) else str(args)
 
-    # For text-completion ability, add role to kwargs if provided
+    # For text-completion ability, add role to kwargs if provided and request usage data
     if name == "text-completion" and role:
         kwargs["role"] = role
+        kwargs["return_usage"] = True
         logger.debug(f"Using role: {role} for text-completion")
 
     # Execute the ability and capture the response
     start_time = time.time()
     try:
-        response = ability(*args, **kwargs)
+        result = ability(*args, **kwargs)
         execution_time = time.time() - start_time
 
-        # Log the prompt and response
+        # Handle tuple response (response, usage_dict) from text-completion
+        usage_data = None
+        if isinstance(result, tuple) and len(result) == 2:
+            response, usage_data = result
+        else:
+            response = result
+
+        # Log the prompt and response with usage data
         log_prompt(
             prompt=prompt,
             response=response if isinstance(response, str) else str(response),
@@ -72,6 +80,7 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
                 "args": str(args[1:]) if len(args) > 1 else None,
                 "kwargs": str(kwargs) if kwargs else None,
             },
+            usage=usage_data
         )
 
         return response

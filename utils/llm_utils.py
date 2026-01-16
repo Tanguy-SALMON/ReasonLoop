@@ -15,9 +15,11 @@ def test_llm_service():
     Returns:
         tuple: (bool, str) - (success, message)
     """
-    provider = get_setting("LLM_PROVIDER", "zai").lower()
+    provider = get_setting("LLM_PROVIDER", "xai").lower()
 
-    if provider == "ollama":
+    if provider == "xai":
+        return _test_xai()
+    elif provider == "ollama":
         return _test_ollama()
     elif provider == "anthropic":
         return _test_anthropic()
@@ -27,6 +29,68 @@ def test_llm_service():
         return _test_zai()
     else:
         return False, f"Unknown LLM provider: {provider}"
+
+
+def _test_xai():
+    """Test XAI (Grok) service"""
+    api_key = get_setting("XAI_API_KEY")
+    if not api_key:
+        return False, "XAI API key is not set in .env file (XAI_API_KEY)"
+
+    api_url = get_setting("XAI_API_URL", "https://api.x.ai/v1/chat/completions")
+    model = get_setting("XAI_MODEL", "grok-2-1212")
+
+    logger.info(f"Testing XAI service with model {model}")
+
+    test_prompt = "Respond with 'OK' if you can read this message."
+
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": test_prompt}],
+            "temperature": 0.7,
+            "max_tokens": 10,
+        }
+
+        start_time = time.time()
+        response = requests.post(api_url, headers=headers, json=data, timeout=10)
+        response_time = time.time() - start_time
+
+        if response.status_code == 401:
+            return False, "XAI API key is invalid or expired. Check XAI_API_KEY in .env"
+        elif response.status_code == 429:
+            return False, "XAI rate limit exceeded. Please wait and try again."
+        elif response.status_code != 200:
+            error_detail = ""
+            try:
+                error_data = response.json()
+                error_detail = f": {error_data.get('error', {}).get('message', '')}"
+            except:
+                pass
+            return False, f"XAI service returned status code {response.status_code}{error_detail}"
+
+        try:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                content = result["choices"][0]["message"]["content"]
+                logger.info(f"XAI test successful. Response: '{content}' ({response_time:.2f}s)")
+                return True, f"XAI service is available. Response time: {response_time:.2f}s"
+            else:
+                return False, f"Unexpected response format from XAI: {result}"
+        except json.JSONDecodeError:
+            return False, "Failed to parse JSON response from XAI"
+
+    except requests.exceptions.ConnectionError:
+        return False, "Failed to connect to XAI service. Check network connectivity."
+    except requests.exceptions.Timeout:
+        return False, "Connection to XAI service timed out."
+    except Exception as e:
+        return False, f"Error testing XAI service: {str(e)}"
 
 
 def _test_zai():
