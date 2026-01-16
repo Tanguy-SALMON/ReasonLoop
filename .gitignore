@@ -89,3 +89,4 @@ ENV/
 .venv/
 
 Context.md
+config/settings.json

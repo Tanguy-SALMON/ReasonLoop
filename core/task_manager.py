@@ -126,14 +126,14 @@ class TaskManager:
         tasks = [
             Task(
                 id=1,
-                task=f"Research information related to: {self.objective}",
+                description=f"Research information related to: {self.objective}",
                 ability="web-search",
                 dependent_task_ids=[],
                 status="incomplete",
             ),
             Task(
                 id=2,
-                task=f"Create a final summary report for the objective: {self.objective}",
+                description=f"Create a final summary report for the objective: {self.objective}",
                 ability="text-completion",
                 dependent_task_ids=[1],
                 status="incomplete",
@@ -193,7 +193,6 @@ class TaskManager:
 
         logger.info(f"Executing task #{task.id}: {task_description}")
         start_time = time.time()
-
         # Prepare context from dependent tasks
         dependent_outputs = ""
         if task.dependent_task_ids:

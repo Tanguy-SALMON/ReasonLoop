@@ -20,7 +20,7 @@ except ImportError:
     pass  # python-dotenv not installed, environment variables will still work
 
 from abilities.text_completion import text_completion_ability, stream_text_completion
-from config.settings import get_zai_model, get_setting
+from config.settings import get_model_for_provider, get_setting
 
 
 def demonstrate_multi_agent_roles():
@@ -31,21 +31,12 @@ def demonstrate_multi_agent_roles():
     print()
 
     # Display current configuration
-    provider = get_setting("LLM_PROVIDER", "zai")
+    provider = get_setting("LLM_PROVIDER", "xai")
     print(f"Current Model Configuration (Provider: {provider}):")
-
-    if provider.lower() == "zai":
-        print(f"  Orchestrator: {get_zai_model('orchestrator')}")
-        print(f"  Planner:      {get_zai_model('planner')}")
-        print(f"  Executor:     {get_zai_model('executor')}")
-        print(f"  Reviewer:     {get_zai_model('reviewer')}")
-    else:
-        # Fallback for other providers
-        print(f"  Provider: {provider} (showing Z.ai models as fallback)")
-        print(f"  Orchestrator: {get_zai_model('orchestrator')}")
-        print(f"  Planner:      {get_zai_model('planner')}")
-        print(f"  Executor:     {get_zai_model('executor')}")
-        print(f"  Reviewer:     {get_zai_model('reviewer')}")
+    print(f"  Orchestrator: {get_model_for_provider(provider, 'orchestrator')}")
+    print(f"  Planner:      {get_model_for_provider(provider, 'planner')}")
+    print(f"  Executor:     {get_model_for_provider(provider, 'executor')}")
+    print(f"  Reviewer:     {get_model_for_provider(provider, 'reviewer')}")
     print()
 
     # Example scenarios for each role
@@ -72,12 +63,8 @@ def demonstrate_multi_agent_roles():
     print("-" * 50)
 
     for role, scenario in scenarios.items():
-        provider = get_setting("LLM_PROVIDER", "zai")
-        model = (
-            get_zai_model(role)
-            if provider.lower() == "zai"
-            else f"{provider.upper()} model"
-        )
+        provider = get_setting("LLM_PROVIDER", "xai")
+        model = get_model_for_provider(provider, role)
         print(f"\n🤖 {role.upper()} ({model})")
         print(f"Task: {scenario['description']}")
         print(f"Prompt: {scenario['prompt'][:80]}...")
@@ -100,7 +87,7 @@ def demonstrate_multi_agent_roles():
 
     print("\n✅ Multi-agent demonstration completed!")
     print(
-        "\nNote: Each role uses a different Ollama model as configured in your .env file."
+        "\nNote: Each role uses a different model as configured in your .env file."
     )
     print(
         "The system automatically selects the appropriate model based on the task context."
@@ -146,12 +133,8 @@ def show_role_selection_logic():
 
         # Determine the role
         role = task_manager._determine_task_role(mock_task)
-        provider = get_setting("LLM_PROVIDER", "zai")
-        model = (
-            get_zai_model(role)
-            if provider.lower() == "zai"
-            else f"{provider.upper()} model"
-        )
+        provider = get_setting("LLM_PROVIDER", "xai")
+        model = get_model_for_provider(provider, role)
 
         print(f"{i}. Task: {task_description}")
         print(f"   → Role: {role.upper()}")
@@ -187,18 +170,22 @@ def test_llm_connection():
         print(f"❌ {provider} connection failed:")
         print(f"Error: {e}")
         print("\nTroubleshooting steps:")
-        if provider == "zai":
+        if provider.lower() == "xai":
+            print("1. Check your XAI_API_KEY in .env file")
+            print("2. Verify your X.AI account balance")
+            print("3. Confirm XAI_API_URL is correct")
+        elif provider.lower() == "zai":
             print("1. Check your ZAI_API_KEY in .env file")
             print("2. Verify your Z.ai account balance")
             print("3. Confirm ZAI_BASE_URL is correct")
-        elif provider == "ollama":
+        elif provider.lower() == "ollama":
             print("1. Make sure Ollama is running: ollama serve")
             print("2. Check if your models are available: ollama list")
             print("3. Verify your .env configuration")
-        elif provider == "openai":
+        elif provider.lower() == "openai":
             print("1. Check your OPENAI_API_KEY in .env file")
             print("2. Verify your OpenAI account balance")
-        elif provider == "anthropic":
+        elif provider.lower() == "anthropic":
             print("1. Check your ANTHROPIC_API_KEY in .env file")
             print("2. Verify your Anthropic account balance")
 

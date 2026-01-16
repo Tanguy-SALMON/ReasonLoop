@@ -1,0 +1,33 @@
+{
+  "DEFAULT_OBJECTIVE": "Create a 3-day itinerary for Bangkok",
+  "PROMPT_TEMPLATE": "default_tasks",
+  "MAX_RETRIES": 2,
+  "RETRY_DELAY": 2.0,
+  "LLM_PROVIDER": "xai",
+  "LLM_MODEL": "grok-2-1212",
+  "LLM_API_URL": "https://api.anthropic.com/v1/messages",
+  "LLM_TEMPERATURE": 0.1,
+  "LLM_MAX_TOKENS": 2048,
+  "LLM_REPEAT_PENALTY": 1.1,
+  "LLM_TOP_P": 0.8,
+  "LLM_SEED": 42,
+  "LLM_NUM_CTX": 2048,
+  "OLLAMA_API_URL": "http://localhost:11434/api/generate",
+  "OLLAMA_MODEL": "llama2",
+  "ANTHROPIC_API_URL": "https://api.anthropic.com/v1/messages",
+  "ANTHROPIC_API_KEY": "",
+  "ANTHROPIC_MODEL": "claude-3-7-sonnet-latest",
+  "OPENAI_API_URL": "https://api.openai.com/v1/chat/completions",
+  "OPENAI_API_KEY": "",
+  "OPENAI_MODEL": "gpt-3.5-turbo",
+  "DB_CONFIG": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "your_database"
+  },
+  "WEB SEARCH_ENABLED": true,
+  "WEB SEARCH_RESULTS_COUNT": 5,
+  "WEB_SEARCH_ENABLED": true,
+  "WEB_SEARCH_RESULTS_COUNT": 5
+}
