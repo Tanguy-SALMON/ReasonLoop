@@ -60,17 +60,42 @@ def execute_ability(name: str, *args: Any, **kwargs: Any) -> Any:
     # Execute the ability and capture the response
     start_time = time.time()
     try:
-        # Check if ability is async (coroutine)
-        result = ability(*args, **kwargs)
-        if inspect.iscoroutine(result):
-            # Check if we're already in an event loop
+        # Check if ability is async (coroutine function)
+        if inspect.iscoroutinefunction(ability):
+            # Ability is async, need to await it
             try:
                 loop = asyncio.get_running_loop()
-                # We're in a loop, shouldn't happen in sync context
-                logger.warning("Async ability called from within event loop - this may cause issues")
+                # We're already in an event loop, create a new one in a thread
+                logger.debug("Executing async ability - creating new event loop")
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    result = new_loop.run_until_complete(ability(*args, **kwargs))
+                finally:
+                    new_loop.close()
+                    asyncio.set_event_loop(loop)
             except RuntimeError:
                 # No loop running, safe to use asyncio.run()
-                result = asyncio.run(result)
+                logger.debug("Executing async ability with asyncio.run()")
+                result = asyncio.run(ability(*args, **kwargs))
+        else:
+            # Regular synchronous ability
+            result = ability(*args, **kwargs)
+            # Check if it returned a coroutine anyway (shouldn't happen but be safe)
+            if inspect.iscoroutine(result):
+                logger.warning("Sync ability returned coroutine - attempting to run it")
+                try:
+                    loop = asyncio.get_running_loop()
+                    # Create new loop to avoid blocking
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        result = new_loop.run_until_complete(result)
+                    finally:
+                        new_loop.close()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    result = asyncio.run(result)
 
         execution_time = time.time() - start_time
 

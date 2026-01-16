@@ -244,7 +244,7 @@ class TaskManager:
             task.mark_complete(output)
 
             # Add to session summary
-            self.session_summary += f"\n\nTask {task.id} - {task.task}:\n{output}"
+            self.session_summary += f"\n\nTask {task.id} - {task_description}:\n{output}"
 
             # Create result
             execution_time = time.time() - start_time

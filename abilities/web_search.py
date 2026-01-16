@@ -1,28 +1,21 @@
 """
-Web search ability using DuckDuckGo with retry and fallback
+Web search ability using DuckDuckGo Instant Answer API
 """
 
 import logging
-import asyncio
+import time
+import requests
 from typing import Optional
 from config.settings import get_setting
 
 logger = logging.getLogger(__name__)
-
-try:
-    import aiohttp
-    from bs4 import BeautifulSoup
-    AIOHTTP_AVAILABLE = True
-except ImportError:
-    AIOHTTP_AVAILABLE = False
-    logger.warning("Missing dependencies for web search: aiohttp or beautifulsoup4")
 
 
 def _generate_search_context(query: str) -> str:
     """Generate contextual information when search is unavailable"""
     return f"""Search query: "{query}"
 
-Note: Direct web search is currently unavailable (bot detection). Here's what I can help with:
+Note: Direct web search is currently unavailable. Here's what I can help with:
 
 1. If you're looking for general information, I can provide answers based on my training data
 2. For technical questions, I can offer programming solutions and best practices
@@ -34,94 +27,144 @@ Note: Direct web search is currently unavailable (bot detection). Here's what I 
 Please let me know how I can assist you with this topic using my existing knowledge."""
 
 
-async def web_search_ability(query: str) -> str:
-    """Search the web for information using DuckDuckGo"""
+def _ddg_instant_answer(query: str) -> dict:
+    """
+    Query DuckDuckGo Instant Answer API
+
+    Args:
+        query: Search query string
+
+    Returns:
+        JSON response from DuckDuckGo API
+    """
+    url = "https://api.duckduckgo.com/"
+    params = {
+        "q": query,
+        "format": "json",
+        "no_html": 1,
+        "skip_disambig": 1
+    }
+
+    headers = {
+        "User-Agent": "ReasonLoop/1.0"
+    }
+
+    response = requests.get(url, params=params, headers=headers, timeout=10)
+    response.raise_for_status()
+    return response.json()
+
+
+def _format_ddg_response(data: dict, query: str) -> str:
+    """
+    Format DuckDuckGo API response into readable text
+
+    Args:
+        data: JSON response from DuckDuckGo API
+        query: Original search query
+
+    Returns:
+        Formatted search results as string
+    """
+    results = []
+
+    # Abstract (main answer)
+    if data.get("Abstract"):
+        results.append(f"## Answer\n{data['Abstract']}")
+        if data.get("AbstractURL"):
+            results.append(f"Source: {data['AbstractURL']}")
+
+    # Definition
+    if data.get("Definition"):
+        results.append(f"## Definition\n{data['Definition']}")
+        if data.get("DefinitionURL"):
+            results.append(f"Source: {data['DefinitionURL']}")
+
+    # Answer (direct answer)
+    if data.get("Answer"):
+        results.append(f"## Direct Answer\n{data['Answer']}")
+
+    # Related Topics
+    related_topics = data.get("RelatedTopics", [])
+    if related_topics:
+        results.append("\n## Related Topics")
+        count = 0
+        for topic in related_topics[:5]:  # Limit to 5 related topics
+            if isinstance(topic, dict) and topic.get("Text"):
+                count += 1
+                text = topic.get("Text", "")
+                url = topic.get("FirstURL", "")
+                results.append(f"\n{count}. {text}")
+                if url:
+                    results.append(f"   URL: {url}")
+
+    # Infobox (additional structured data)
+    if data.get("Infobox"):
+        infobox = data["Infobox"]
+        if infobox.get("content"):
+            results.append("\n## Additional Information")
+            for item in infobox["content"][:5]:  # Limit to 5 items
+                if isinstance(item, dict):
+                    label = item.get("label", "")
+                    value = item.get("value", "")
+                    if label and value:
+                        results.append(f"- {label}: {value}")
+
+    if not results:
+        return _generate_search_context(query)
+
+    formatted = f"Search results for: {query}\n\n"
+    formatted += "\n\n".join(results)
+
+    return formatted
+
+
+def web_search_ability(query: str) -> str:
+    """
+    Search the web for information using DuckDuckGo Instant Answer API
+
+    Args:
+        query: Search query string
+
+    Returns:
+        Formatted search results as string
+    """
     logger.debug(f"ABILITY CALLED: web-search with query: {query}")
 
     if not get_setting("WEB_SEARCH_ENABLED", True):
         return "Web search is disabled in configuration."
-
-    if not AIOHTTP_AVAILABLE:
-        logger.warning("Web search dependencies not available")
-        return _generate_search_context(query)
 
     max_retries = 2
     retry_delay = 2.0
 
     for attempt in range(max_retries):
         try:
-            search_url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
+            # Query DuckDuckGo API
+            data = _ddg_instant_answer(query)
 
-            timeout = aiohttp.ClientTimeout(total=10)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(search_url, headers=headers) as response:
-                    # Handle bot detection (HTTP 202)
-                    if response.status == 202:
-                        logger.warning(f"DuckDuckGo returned HTTP 202 (bot detection) - attempt {attempt + 1}/{max_retries}")
-                        if attempt < max_retries - 1:
-                            await asyncio.sleep(retry_delay)
-                            continue
-                        else:
-                            logger.info("Returning contextual fallback due to bot detection")
-                            return _generate_search_context(query)
+            # Format the response
+            formatted_results = _format_ddg_response(data, query)
 
-                    response.raise_for_status()
-                    html = await response.text()
-
-            # Parse results
-            soup = BeautifulSoup(html, 'html.parser')
-            results = []
-            max_results = get_setting("WEB_SEARCH_RESULTS_COUNT", 5)
-
-            for result in soup.select('.result'):
-                title_elem = result.select_one('.result__title')
-                link_elem = result.select_one('.result__url')
-                snippet_elem = result.select_one('.result__snippet')
-
-                if title_elem and link_elem:
-                    title = title_elem.get_text(strip=True)
-                    link = link_elem.get('href', '')
-                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
-
-                    results.append({
-                        "title": title,
-                        "link": link,
-                        "snippet": snippet
-                    })
-
-                    if len(results) >= max_results:
-                        break
-
-            if not results:
-                logger.warning("No search results found")
-                return _generate_search_context(query)
-
-            # Format results
-            formatted_results = f"Search results for: {query}\n\n"
-            for i, result in enumerate(results, 1):
-                formatted_results += f"{i}. {result['title']}\n"
-                formatted_results += f"   URL: {result['link']}\n"
-                if result['snippet']:
-                    formatted_results += f"   {result['snippet']}\n"
-                formatted_results += "\n"
-
-            logger.info(f"Web search completed: found {len(results)} results")
+            logger.info(f"Web search completed successfully for query: {query}")
             return formatted_results
 
-        except asyncio.TimeoutError:
+        except requests.Timeout:
             logger.warning(f"Web search timeout - attempt {attempt + 1}/{max_retries}")
             if attempt < max_retries - 1:
-                await asyncio.sleep(retry_delay)
+                time.sleep(retry_delay)
+            else:
+                return _generate_search_context(query)
+
+        except requests.RequestException as e:
+            logger.error(f"Web search request error - attempt {attempt + 1}/{max_retries}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
             else:
                 return _generate_search_context(query)
 
         except Exception as e:
             logger.error(f"Web search error - attempt {attempt + 1}/{max_retries}: {e}")
             if attempt < max_retries - 1:
-                await asyncio.sleep(retry_delay)
+                time.sleep(retry_delay)
             else:
                 return _generate_search_context(query)
 
