@@ -438,6 +438,231 @@ class WebsiteIntelligenceExtractor:
 
         return list(fonts)
 
+    def extract_design_metrics(self) -> Dict[str, Any]:
+        """
+        Extract detailed design metrics: fonts with URLs, spacing, borders, etc.
+        Critical for replicating brand design in email templates.
+        """
+        design = {
+            "typography": {
+                "font_families": [],
+                "font_urls": [],
+                "heading_sizes": [],
+                "body_sizes": [],
+                "line_heights": [],
+                "font_weights": [],
+            },
+            "spacing": {
+                "margins": [],
+                "paddings": [],
+                "gaps": [],
+            },
+            "borders": {
+                "border_radius": [],
+                "border_widths": [],
+                "border_styles": [],
+                "border_colors": [],
+            },
+            "buttons": {
+                "styles": [],
+                "border_radius": None,
+                "padding": None,
+                "font_weight": None,
+                "text_transform": None,
+            },
+            "layout": {
+                "max_width": None,
+                "container_padding": None,
+                "grid_gap": None,
+            },
+        }
+
+        # Extract Google Fonts / external font URLs
+        font_links = self.soup.find_all(
+            "link",
+            href=re.compile(
+                r"fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|fast\.fonts\.net",
+                re.I,
+            ),
+        )
+        for link in font_links:
+            href = link.get("href", "")
+            if href:
+                design["typography"]["font_urls"].append(href)
+                # Extract font names from Google Fonts URL
+                if "fonts.googleapis.com" in href:
+                    font_matches = re.findall(r"family=([^&:]+)", href)
+                    for match in font_matches:
+                        fonts = match.replace("+", " ").split("|")
+                        design["typography"]["font_families"].extend(fonts)
+
+        # Look for @font-face declarations
+        style_tags = self.soup.find_all("style")
+        all_css = ""
+        for style_tag in style_tags:
+            if style_tag.string:
+                all_css += style_tag.string
+
+        # Extract @font-face font URLs
+        font_face_urls = re.findall(
+            r"@font-face[^}]*url\(['\"]?([^'\")\s]+)['\"]?\)", all_css, re.I
+        )
+        for url in font_face_urls:
+            if url.startswith("//"):
+                url = "https:" + url
+            elif url.startswith("/"):
+                url = urljoin(self.url, url)
+            design["typography"]["font_urls"].append(url)
+
+        # Extract font-family declarations
+        font_families = re.findall(r"font-family:\s*([^;]+)", all_css, re.I)
+        for ff in font_families:
+            font = ff.split(",")[0].strip().strip("\"'")
+            if font and font.lower() not in [
+                "inherit",
+                "initial",
+                "sans-serif",
+                "serif",
+                "monospace",
+            ]:
+                if font not in design["typography"]["font_families"]:
+                    design["typography"]["font_families"].append(font)
+
+        # Extract font sizes
+        font_sizes = re.findall(r"font-size:\s*([^;]+)", all_css, re.I)
+        size_values = []
+        for size in font_sizes:
+            size = size.strip()
+            if re.match(r"^\d+\.?\d*(px|rem|em|pt)$", size):
+                size_values.append(size)
+        # Dedupe and sort
+        size_values = list(set(size_values))
+        design["typography"]["heading_sizes"] = [
+            s for s in size_values if self._parse_size(s) >= 18
+        ][:5]
+        design["typography"]["body_sizes"] = [
+            s for s in size_values if 12 <= self._parse_size(s) < 18
+        ][:3]
+
+        # Extract line heights
+        line_heights = re.findall(r"line-height:\s*([^;]+)", all_css, re.I)
+        design["typography"]["line_heights"] = list(
+            set([lh.strip() for lh in line_heights if lh.strip()])
+        )[:5]
+
+        # Extract font weights
+        font_weights = re.findall(
+            r"font-weight:\s*(\d+|normal|bold|lighter|bolder)", all_css, re.I
+        )
+        design["typography"]["font_weights"] = list(set(font_weights))
+
+        # Extract margins
+        margins = re.findall(
+            r"margin(?:-(?:top|right|bottom|left))?:\s*([^;]+)", all_css, re.I
+        )
+        design["spacing"]["margins"] = self._extract_common_values(margins)
+
+        # Extract paddings
+        paddings = re.findall(
+            r"padding(?:-(?:top|right|bottom|left))?:\s*([^;]+)", all_css, re.I
+        )
+        design["spacing"]["paddings"] = self._extract_common_values(paddings)
+
+        # Extract gaps (flexbox/grid)
+        gaps = re.findall(r"(?:row-gap|column-gap|gap):\s*([^;]+)", all_css, re.I)
+        design["spacing"]["gaps"] = self._extract_common_values(gaps)
+
+        # Extract border-radius
+        border_radii = re.findall(r"border-radius:\s*([^;]+)", all_css, re.I)
+        design["borders"]["border_radius"] = self._extract_common_values(border_radii)
+
+        # Extract border widths
+        border_widths = re.findall(
+            r"border(?:-(?:top|right|bottom|left))?-width:\s*([^;]+)", all_css, re.I
+        )
+        design["borders"]["border_widths"] = self._extract_common_values(border_widths)
+
+        # Extract border styles
+        border_styles = re.findall(
+            r"border(?:-(?:top|right|bottom|left))?-style:\s*([^;]+)", all_css, re.I
+        )
+        design["borders"]["border_styles"] = list(
+            set([s.strip() for s in border_styles if s.strip()])
+        )
+
+        # Extract border colors
+        border_colors = re.findall(
+            r"border(?:-(?:top|right|bottom|left))?-color:\s*([^;]+)", all_css, re.I
+        )
+        design["borders"]["border_colors"] = list(
+            set([c.strip() for c in border_colors if c.strip()])
+        )[:5]
+
+        # Extract button styles
+        button_css = re.findall(
+            r"(?:\.btn|\.button|button)[^{]*\{([^}]+)\}", all_css, re.I
+        )
+        if button_css:
+            btn_style = button_css[0]
+            # Extract button border-radius
+            btn_radius = re.search(r"border-radius:\s*([^;]+)", btn_style, re.I)
+            if btn_radius:
+                design["buttons"]["border_radius"] = btn_radius.group(1).strip()
+            # Extract button padding
+            btn_padding = re.search(r"padding:\s*([^;]+)", btn_style, re.I)
+            if btn_padding:
+                design["buttons"]["padding"] = btn_padding.group(1).strip()
+            # Extract button font-weight
+            btn_weight = re.search(r"font-weight:\s*([^;]+)", btn_style, re.I)
+            if btn_weight:
+                design["buttons"]["font_weight"] = btn_weight.group(1).strip()
+            # Extract text-transform
+            btn_transform = re.search(r"text-transform:\s*([^;]+)", btn_style, re.I)
+            if btn_transform:
+                design["buttons"]["text_transform"] = btn_transform.group(1).strip()
+
+        # Extract container/layout metrics
+        container_css = re.findall(
+            r"(?:\.container|\.wrapper|main)[^{]*\{([^}]+)\}", all_css, re.I
+        )
+        if container_css:
+            container_style = container_css[0]
+            max_width = re.search(r"max-width:\s*([^;]+)", container_style, re.I)
+            if max_width:
+                design["layout"]["max_width"] = max_width.group(1).strip()
+            container_padding = re.search(r"padding:\s*([^;]+)", container_style, re.I)
+            if container_padding:
+                design["layout"]["container_padding"] = container_padding.group(
+                    1
+                ).strip()
+
+        return design
+
+    def _parse_size(self, size: str) -> float:
+        """Parse a CSS size value to pixels (approximate)"""
+        try:
+            if "px" in size:
+                return float(size.replace("px", ""))
+            elif "rem" in size:
+                return float(size.replace("rem", "")) * 16
+            elif "em" in size:
+                return float(size.replace("em", "")) * 16
+            elif "pt" in size:
+                return float(size.replace("pt", "")) * 1.333
+            return 0
+        except:
+            return 0
+
+    def _extract_common_values(self, values: List[str], limit: int = 5) -> List[str]:
+        """Extract most common CSS values"""
+        from collections import Counter
+
+        cleaned = [v.strip() for v in values if v.strip() and v.strip() != "0"]
+        if not cleaned:
+            return []
+        counts = Counter(cleaned)
+        return [v for v, _ in counts.most_common(limit)]
+
 
 def website_intelligence_ability(url: str) -> str:
     """
