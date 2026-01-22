@@ -1,42 +1,50 @@
-# Byte-compiled / optimized / DLL files
+# =============================================================================
+# ReasonLoop Project - Restrictive .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
+*.egg
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+.installed.cfg
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Distribution / packaging
+# -----------------------------------------------------------------------------
+# Virtual Environments
+# -----------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
 .Python
+
+# -----------------------------------------------------------------------------
+# Distribution / Build
+# -----------------------------------------------------------------------------
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
-.eggs/
 lib/
 lib64/
 parts/
 sdist/
 var/
 wheels/
-metrics/
-outputs/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
+# -----------------------------------------------------------------------------
+# Testing / Coverage
+# -----------------------------------------------------------------------------
 htmlcov/
 .tox/
 .nox/
@@ -49,45 +57,70 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-.history
-# Translations
-*.mo
-*.pot
 
-# Logs and databases
-*.log
-*.sqlite3
-
-# Environment variables
-.env
-.env.*
-*.env
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# PyCharm
+# -----------------------------------------------------------------------------
+# IDE / Editors
+# -----------------------------------------------------------------------------
 .idea/
-
-# VSCode
 .vscode/
+*.swp
+*.swo
+*~
+.history/
 
-# macOS
+# -----------------------------------------------------------------------------
+# OS Files
+# -----------------------------------------------------------------------------
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# -----------------------------------------------------------------------------
 # Logs
+# -----------------------------------------------------------------------------
 logs/
+*.log
 
-# Virtual environments
-venv/
-env/
-ENV/
-.venv/
+# -----------------------------------------------------------------------------
+# Environment / Secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+!.env.example
 
-Context.md
+# -----------------------------------------------------------------------------
+# Project-specific: Generated Output
+# -----------------------------------------------------------------------------
+output/
+outputs/
+
+# -----------------------------------------------------------------------------
+# Project-specific: Meta Templates (agent definition creators)
+# -----------------------------------------------------------------------------
+templates/agent_definition_creator*.md
+
+# -----------------------------------------------------------------------------
+# Project-specific: Runtime Data
+# -----------------------------------------------------------------------------
+metrics/
+!metrics/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Project-specific: Local Config
+# -----------------------------------------------------------------------------
 config/settings.json
+Context.md
+
+# -----------------------------------------------------------------------------
+# Jupyter / Data
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+*.sqlite3
+
+# -----------------------------------------------------------------------------
+# Translations
+# -----------------------------------------------------------------------------
+*.mo
+*.pot
