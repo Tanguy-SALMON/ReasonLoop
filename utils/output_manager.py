@@ -89,6 +89,29 @@ class OutputManager:
         """Get path relative to session directory"""
         return os.path.join(self.session_dir, *paths)
 
+    def save_data(self, filename: str, data: dict) -> str:
+        """
+        Save data to JSON file in the data directory.
+
+        Args:
+            filename: Name of the file (e.g., 'intelligence.json')
+            data: Dictionary to save
+
+        Returns:
+            Path to saved file
+        """
+        import json
+
+        # Ensure directories exist
+        self.setup()
+
+        filepath = self.get_data_path(filename)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Saved data to {filepath}")
+        return filepath
+
     def create_summary(
         self,
         url: str,

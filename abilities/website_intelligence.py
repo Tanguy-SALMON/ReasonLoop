@@ -674,6 +674,11 @@ def website_intelligence_ability(url: str) -> str:
     Returns:
         JSON string with complete website intelligence
     """
+    from datetime import datetime
+
+    from utils.output_manager import create_output_session
+    from utils.url_normalizer import normalize_url
+
     logger.info(f"Starting website intelligence extraction for: {url}")
 
     # Clean URL
@@ -686,8 +691,13 @@ def website_intelligence_ability(url: str) -> str:
             # Assume https
             url = f"https://{url}"
 
+    # Normalize URL and create output session
+    normalized_url, clean_domain = normalize_url(url)
+    output_manager = create_output_session(clean_domain)
+    logger.info(f"Output session: {output_manager.session_dir}")
+
     try:
-        extractor = WebsiteIntelligenceExtractor(url)
+        extractor = WebsiteIntelligenceExtractor(normalized_url)
 
         # Fetch website
         if not extractor.fetch_website():
@@ -695,8 +705,8 @@ def website_intelligence_ability(url: str) -> str:
 
         # Extract all intelligence
         intelligence = {
-            "website_url": url,
-            "analysis_date": "",
+            "website_url": normalized_url,
+            "analysis_date": datetime.now().isoformat(),
             "brand_identity": extractor.extract_brand_identity(),
             "brand_voice": extractor.extract_brand_voice(),
             "products": extractor.extract_products(),
@@ -706,16 +716,31 @@ def website_intelligence_ability(url: str) -> str:
             "technical": extractor.extract_technical_info(),
             "seo": extractor.extract_seo_metadata(),
             "trust_signals": extractor.extract_trust_signals(),
+            "design_metrics": extractor.extract_design_metrics(),
         }
-
-        # Add timestamp
-        from datetime import datetime
-
-        intelligence["analysis_date"] = datetime.now().isoformat()
 
         # Generate email campaign recommendations
         intelligence["email_campaign_recommendations"] = (
             _generate_campaign_recommendations(intelligence)
+        )
+
+        # Add output session info
+        intelligence["output_session"] = output_manager.session_dir
+
+        # Save intelligence to JSON file
+        intelligence_path = output_manager.save_data("intelligence.json", intelligence)
+        logger.info(f"Saved intelligence to {intelligence_path}")
+
+        # Create/update summary
+        output_manager.create_summary(
+            url=normalized_url,
+            pages_crawled=1,
+            products_found=len(
+                intelligence.get("products", {}).get("featured_items", [])
+            ),
+            emails_created=0,
+            design_system_extracted=bool(intelligence.get("design_metrics")),
+            notes=f"Brand: {intelligence.get('brand_identity', {}).get('name', 'Unknown')}",
         )
 
         logger.info(f"Website intelligence extraction completed for {url}")
@@ -786,6 +811,7 @@ def deep_website_intelligence_ability(
     - Crawls multiple pages (homepage, products, about, etc.)
     - Extracts real product data with images
     - Gets fully rendered content
+    - Saves intelligence.json to output folder
 
     Args:
         url: Target website URL
@@ -796,6 +822,9 @@ def deep_website_intelligence_ability(
         JSON string with comprehensive website intelligence including crawled data
     """
     from datetime import datetime
+
+    from utils.output_manager import create_output_session
+    from utils.url_normalizer import normalize_url
 
     logger.info(f"Starting DEEP website intelligence extraction for: {url}")
 
@@ -963,6 +992,27 @@ def deep_website_intelligence_ability(
                 for p in crawl_result.get("pages", [])
             ],
         }
+
+        # Normalize URL and create output session
+        normalized_url, clean_domain = normalize_url(url)
+        output_manager = create_output_session(clean_domain)
+
+        # Add output session info
+        intelligence["output_session"] = output_manager.session_dir
+
+        # Save intelligence to JSON file
+        intelligence_path = output_manager.save_data("intelligence.json", intelligence)
+        logger.info(f"Saved intelligence to {intelligence_path}")
+
+        # Create/update summary
+        output_manager.create_summary(
+            url=normalized_url,
+            pages_crawled=intelligence["crawl_stats"]["pages_crawled"],
+            products_found=intelligence["crawl_stats"]["total_products_found"],
+            emails_created=0,
+            design_system_extracted=True,
+            notes=f"Brand: {intelligence.get('brand_identity', {}).get('name', 'Unknown')} | Deep crawl with {max_pages} pages",
+        )
 
         logger.info(
             f"Deep website intelligence completed: {intelligence['crawl_stats']}"
