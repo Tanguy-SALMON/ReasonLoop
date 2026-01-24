@@ -770,6 +770,14 @@ def web_crawler_with_screenshots_ability(
         else:
             url = f"https://{url}"
 
+    # Normalize URL to optimal base URL
+    from utils.url_normalizer import normalize_url
+
+    normalized_url, clean_domain = normalize_url(url)
+    logger.info(f"Normalized: {url} -> {normalized_url}")
+    logger.info(f"Using domain identifier: {clean_domain}")
+    url = normalized_url
+
     # Extract screenshot_dir from task description if specified
     # Patterns: "Save to output/domain/screenshots/", "save screenshots to output/..."
     screenshot_dir_match = re.search(
