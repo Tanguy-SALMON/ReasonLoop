@@ -117,6 +117,102 @@ class ImageGenerationProvider:
         return filepath
 
 
+def _extract_prompt_from_input(raw_input: str) -> str:
+    """
+    Extract a valid image generation prompt from raw input.
+    Handles JSON design specs, raw prompts, or structured data.
+
+    Args:
+        raw_input: Raw input that may be JSON, markdown, or plain text
+
+    Returns:
+        Clean text prompt suitable for image generation API
+    """
+    # Strip markdown code blocks if present
+    cleaned = raw_input.strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    # Try to parse as JSON
+    try:
+        data = json.loads(cleaned)
+
+        # Look for explicit image prompt field
+        prompt_fields = [
+            "image_prompt",
+            "hero_image_prompt",
+            "prompt",
+            "description",
+            "image_description",
+        ]
+        for field in prompt_fields:
+            if field in data and isinstance(data[field], str):
+                return data[field]
+
+        # Check hero_image structure (from visual_designer role)
+        if "hero_image" in data:
+            hero = data["hero_image"]
+            if isinstance(hero, dict):
+                for field in prompt_fields:
+                    if field in hero and isinstance(hero[field], str):
+                        return hero[field]
+            elif isinstance(hero, str):
+                return hero
+
+        # Check nested structures
+        if "visual_elements" in data:
+            visual = data["visual_elements"]
+            if isinstance(visual, dict):
+                for field in prompt_fields:
+                    if field in visual and isinstance(visual[field], str):
+                        return visual[field]
+                # Build prompt from visual elements
+                parts = []
+                if "hero_image" in visual:
+                    hero = visual["hero_image"]
+                    if isinstance(hero, dict):
+                        for field in prompt_fields + ["concept", "theme", "style"]:
+                            if field in hero:
+                                parts.append(str(hero[field]))
+                    elif isinstance(hero, str):
+                        parts.append(hero)
+                if parts:
+                    return ". ".join(parts)
+
+        # Check email_design_specs structure
+        if "email_design_specs" in data:
+            specs = data["email_design_specs"]
+            if isinstance(specs, dict) and "visual_elements" in specs:
+                return _extract_prompt_from_input(json.dumps(specs))
+
+        # Check for color_palette and build a generic prompt
+        if "color_palette" in data:
+            colors = data.get("color_palette", {})
+            primary = colors.get("primary", "")
+            secondary = colors.get("secondary", "")
+            mood = data.get("mood", "professional")
+            return f"Professional email hero banner. Color palette: {primary}, {secondary}. Mood: {mood}. Clean composition with space for text overlay. No text in image."
+
+        # If JSON but no recognized structure, indicate error
+        logger.warning(
+            f"JSON input detected but no image prompt field found. Keys: {list(data.keys())}"
+        )
+        return None
+
+    except json.JSONDecodeError:
+        # Not JSON, treat as direct prompt
+        # But check if it's too long or looks like code/specs
+        if len(cleaned) > 1000:
+            logger.warning("Input too long for image prompt, truncating")
+            cleaned = cleaned[:500]
+        return cleaned
+
+
 def image_generation_ability(
     prompt: str,
     domain: str = None,
@@ -128,7 +224,8 @@ def image_generation_ability(
     Generate images for email campaigns.
 
     Args:
-        prompt: Description of the image to generate (from visual_designer)
+        prompt: Description of the image to generate (from visual_designer).
+                Can be plain text or JSON with image_prompt field.
         domain: Domain name for organizing output
         size: Image dimensions (default 1024x512 for email banners)
         save_to_disk: Whether to save images to output folder
@@ -136,17 +233,36 @@ def image_generation_ability(
     Returns:
         JSON string with image paths or base64 data
     """
-    logger.info(f"Image generation requested: {prompt[:100]}...")
+    # Extract clean prompt from input (handles JSON design specs)
+    clean_prompt = _extract_prompt_from_input(prompt)
+
+    if not clean_prompt:
+        error_msg = (
+            "Could not extract image prompt from input. "
+            "Expected either plain text prompt or JSON with 'image_prompt' field."
+        )
+        logger.error(error_msg)
+        return json.dumps(
+            {
+                "error": error_msg,
+                "hint": "Add 'image_prompt' field to your JSON with a text description of the desired image",
+                "raw_input_preview": prompt[:200] + "..."
+                if len(prompt) > 200
+                else prompt,
+            }
+        )
+
+    logger.info(f"Image generation requested: {clean_prompt[:100]}...")
 
     try:
         provider = ImageGenerationProvider()
-        images, api_response = provider.generate(prompt, size=size, n=1)
+        images, api_response = provider.generate(clean_prompt, size=size, n=1)
 
         if not images:
-            return json.dumps({"error": "No images generated", "prompt": prompt})
+            return json.dumps({"error": "No images generated", "prompt": clean_prompt})
 
         result = {
-            "prompt": prompt,
+            "prompt": clean_prompt,
             "model": provider.model,
             "size": size,
             "images": [],
@@ -194,11 +310,11 @@ def image_generation_ability(
     except requests.exceptions.HTTPError as e:
         error_msg = f"Image generation API error: {str(e)}"
         logger.error(error_msg)
-        return json.dumps({"error": error_msg, "prompt": prompt})
+        return json.dumps({"error": error_msg, "prompt": clean_prompt})
     except Exception as e:
         error_msg = f"Image generation failed: {str(e)}"
         logger.error(error_msg)
-        return json.dumps({"error": error_msg, "prompt": prompt})
+        return json.dumps({"error": error_msg, "prompt": clean_prompt})
 
 
 def build_image_prompt(
