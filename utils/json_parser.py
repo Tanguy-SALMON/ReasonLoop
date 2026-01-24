@@ -14,10 +14,17 @@ def extract_json_from_text(text: str) -> Optional[List[Dict[str, Any]]]:
     """Extract JSON array from text"""
 
     # First, strip markdown code blocks if present
-    # Handle ```json ... ``` or ``` ... ```
-    code_block_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    # Handle ```json ... ``` - use GREEDY match to get the LAST closing ```
+    # This handles cases where the JSON content itself contains ``` (like code examples)
+    code_block_match = re.search(r"```(?:json)?\s*([\s\S]*)\s*```", text)
     if code_block_match:
         text = code_block_match.group(1).strip()
+        # If there are still ``` in the text, find the actual JSON array boundaries
+        if "```" in text:
+            # Find the JSON array directly using bracket matching
+            bracket_match = re.search(r"\[[\s\S]*\]", text)
+            if bracket_match:
+                text = bracket_match.group(0)
 
     # Try to find JSON array in the text
     try:
