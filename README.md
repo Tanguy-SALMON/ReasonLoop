@@ -7,7 +7,7 @@ A modular AI agent system with comprehensive metrics tracking, multi-provider LL
 
 ## ✨ Features
 
-- **🤖 Multi-Agent Orchestration**: Intelligent task breakdown and execution
+- **🤖 Multi-Agent Creative Team**: Orchestrated specialists (Copywriter, Art Director, Developer)
 - **🔄 Multi-LLM Provider Support**: Switch between XAI (Grok), Anthropic (Claude), and OpenAI (GPT)
 - **📊 Real-Time Metrics**: Actual token usage, costs, and performance tracking
 - **🌐 Deep Web Scraping**: Playwright-based crawler with JavaScript rendering
@@ -82,12 +82,16 @@ python main.py --objective "Create a technical specification for a REST API"
 ### Advanced Usage
 
 ```bash
-# Use specific agent (emails saved to output/example.com/emails/)
+# Multi-Agent Creative Team (recommended for email campaigns)
+# Uses Copywriter, Art Director, and Developer agents
+python main.py --template email_creative_team --objective "Generate emails for https://example.com"
+
+# Simpler email generation (4-task pipeline)
 python main.py --template email_campaign_generator --objective "Generate emails for https://example.com"
 
 # Website intelligence and email campaign generation
 # Outputs: output/yoursite.com/emails/minimalist.html, bold.html, elegant.html
-python main.py --template email_campaign_generator --objective "Generate branded emails for https://yoursite.com" --verbose
+python main.py --template email_creative_team --objective "Generate branded emails for https://yoursite.com" --verbose
 
 # Deep website scraping with screenshots
 python main.py --objective "Crawl https://example.com with screenshots, max_pages=5, save to output/example.com/screenshots/"
@@ -97,6 +101,55 @@ python main.py --objective "Analyze https://example.com for brand identity, prod
 
 # Verbose logging for debugging
 python main.py --objective "Create a business plan" --verbose
+```
+
+## 🎨 Multi-Agent Creative Team
+
+The `email_creative_team` agent orchestrates a team of specialists to create professional email campaigns:
+
+### The Team
+
+| Role | Responsibility |
+|------|----------------|
+| **@copywriter** | Subject lines, headlines, body copy, CTAs |
+| **@art_director** | Layout, colors, typography, spacing |
+| **@developer** | Production HTML, inline CSS, compatibility |
+
+### Workflow (11 tasks)
+
+```
+Phase 1: Brand Research (website-intelligence)
+    │
+    ├── Phase 2: Copywriting (3 personas in parallel)
+    │   ├── MINIMALIST copy
+    │   ├── BOLD copy
+    │   └── ELEGANT copy
+    │
+    ├── Phase 3: Art Direction (3 personas)
+    │   ├── MINIMALIST design specs
+    │   ├── BOLD design specs
+    │   └── ELEGANT design specs
+    │
+    ├── Phase 4: Development (3 HTML templates)
+    │   ├── minimalist.html
+    │   ├── bold.html
+    │   └── elegant.html
+    │
+    └── Phase 5: Save templates to output/
+```
+
+### Output Structure
+
+```
+output/{domain}/
+├── emails/
+│   ├── minimalist.html
+│   ├── bold.html
+│   └── elegant.html
+├── intelligence/
+│   └── intelligence.json
+└── metrics/
+    └── session_{timestamp}.json
 ```
 
 

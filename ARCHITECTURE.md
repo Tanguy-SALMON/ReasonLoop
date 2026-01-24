@@ -121,6 +121,68 @@ graph TD
 
 ## 🤖 Multi-Agent Orchestration
 
+### Creative Team Architecture (v0.4.0)
+
+The `email_creative_team` agent demonstrates a sophisticated multi-agent pattern with specialized roles:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     CREATIVE TEAM ORCHESTRATOR                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    Phase 1: Research                    │    │
+│  │              [website-intelligence ability]              │    │
+│  │         Extract brand: colors, fonts, tone, products    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                              │                                  │
+│              ┌───────────────┼───────────────┐                  │
+│              v               v               v                  │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐          │
+│  │  @copywriter  │ │  @copywriter  │ │  @copywriter  │          │
+│  │  MINIMALIST   │ │     BOLD      │ │   ELEGANT     │          │
+│  │  - Subject    │ │  - Subject    │ │  - Subject    │          │
+│  │  - Headline   │ │  - Headline   │ │  - Headline   │          │
+│  │  - Body copy  │ │  - Body copy  │ │  - Body copy  │          │
+│  │  - CTAs       │ │  - CTAs       │ │  - CTAs       │          │
+│  └───────────────┘ └───────────────┘ └───────────────┘          │
+│          │                 │                 │                  │
+│          v                 v                 v                  │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐          │
+│  │ @art_director │ │ @art_director │ │ @art_director │          │
+│  │  MINIMALIST   │ │     BOLD      │ │   ELEGANT     │          │
+│  │  - Layout     │ │  - Layout     │ │  - Layout     │          │
+│  │  - Colors     │ │  - Colors     │ │  - Colors     │          │
+│  │  - Typography │ │  - Typography │ │  - Typography │          │
+│  │  - Spacing    │ │  - Spacing    │ │  - Spacing    │          │
+│  └───────────────┘ └───────────────┘ └───────────────┘          │
+│          │                 │                 │                  │
+│          v                 v                 v                  │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐          │
+│  │  @developer   │ │  @developer   │ │  @developer   │          │
+│  │  MINIMALIST   │ │     BOLD      │ │   ELEGANT     │          │
+│  │  - HTML/CSS   │ │  - HTML/CSS   │ │  - HTML/CSS   │          │
+│  │  - Responsive │ │  - Responsive │ │  - Responsive │          │
+│  │  - Compatible │ │  - Compatible │ │  - Compatible │          │
+│  └───────────────┘ └───────────────┘ └───────────────┘          │
+│              │               │               │                  │
+│              └───────────────┼───────────────┘                  │
+│                              v                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                 [save-email-templates]                   │    │
+│  │           Save all 3 HTML templates to output/           │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Specialized Agent Roles
+
+| Role | Location | Responsibility |
+|------|----------|----------------|
+| **Copywriter** | `agents/roles/copywriter.md` | Subject lines, headlines, body copy, CTAs |
+| **Art Director** | `agents/roles/art_director.md` | Layout, colors, typography, visual specs |
+| **Developer** | `agents/roles/developer.md` | Production HTML, inline CSS, compatibility |
+
 ### Role-Based Task Distribution
 
 The system automatically determines the appropriate AI role based on task characteristics:

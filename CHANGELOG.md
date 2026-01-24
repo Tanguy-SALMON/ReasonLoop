@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-01-24
+
+### Added
+- **Multi-Agent Creative Team**: New orchestrated agent system with specialized roles
+  - `email_creative_team.md` - 11-task orchestrator for professional email campaigns
+  - `agents/roles/copywriter.md` - Expert email copywriter (subject lines, headlines, body copy, CTAs)
+  - `agents/roles/art_director.md` - Visual design specialist (layout, colors, typography, spacing)
+  - `agents/roles/developer.md` - Email HTML developer (production-ready, cross-client compatible)
+- **Role-Based Task Execution**: Tasks can now specify a `role` field to use specialized agent prompts
+  - Task list displays roles with `@role` annotation (e.g., `@copywriter`, `@art_director`)
+  - Roles are passed through to text-completion for context-aware generation
+- **JSON Parser Fix**: Improved regex handling for LLM responses with embedded backticks
+  - Fixed issue where ` ```html ` in task descriptions broke JSON extraction
+  - Now uses greedy matching with secondary bracket extraction
+
+### Changed
+- **Task Manager**: Updated to support role-based execution
+  - `_execute_ability()` now accepts optional `role` parameter
+  - Increased dependency output context from 2000 to 4000 chars for richer context
+  - Task display shows role annotations in magenta color
+- **Email Pipeline**: 11-task workflow (was 4) for higher quality output
+  - Separate copywriting, art direction, and development phases
+  - 3 personas processed in parallel branches (minimalist, bold, elegant)
+
+### Output Structure
+```
+output/{domain}/
+├── emails/
+│   ├── minimalist.html
+│   ├── bold.html
+│   └── elegant.html
+├── intelligence/
+│   └── intelligence.json
+└── metrics/
+    └── session_{timestamp}.json
+```
+
 ## [0.3.0] - 2026-01-24
 
 ### Added
