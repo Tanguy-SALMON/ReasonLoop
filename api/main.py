@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from api.core.config import get_config
 from api.core.errors import APIError, api_error_handler
-from api.routes import campaign, design, health, intelligence
+from api.routes import campaign, design, health, intelligence, internal
 
 # Configure logging
 logging.basicConfig(
@@ -114,6 +114,9 @@ The email design endpoint spawns multiple AI agents:
     app.include_router(intelligence.router, prefix=config.api_prefix)
     app.include_router(design.router, prefix=config.api_prefix)
     app.include_router(campaign.router, prefix=config.api_prefix)
+
+    # Internal API routes (secured with X-Internal-Secret)
+    app.include_router(internal.router, prefix=config.api_prefix)
 
     # Root endpoint
     @app.get("/", include_in_schema=False)

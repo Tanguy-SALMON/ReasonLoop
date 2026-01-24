@@ -29,11 +29,11 @@ class APIConfig:
 
         return cls(
             host=os.getenv("API_HOST", "0.0.0.0"),
-            port=int(os.getenv("API_PORT", "8000")),
+            port=int(os.getenv("API_PORT", "8001")),  # Default 8001 for sidecar pattern
             debug=os.getenv("API_DEBUG", "false").lower() == "true",
             cors_origins=cors_origins.split(",") if cors_origins != "*" else ["*"],
             api_title="ReasonLoop Campaign API",
-            api_version="1.0.0",
+            api_version="0.3.0",
             api_prefix="/api/v1",
         )
 
