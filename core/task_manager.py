@@ -87,12 +87,23 @@ class TaskManager:
     def execute_task(self, task: Task) -> Result:
         """Execute a task and return the result"""
         task_desc = task.description or f"Task #{task.id}"
-        display_desc = task_desc[:97] + "..." if len(task_desc) > 100 else task_desc
+
+        # Show role if present (for multi-agent workflows)
+        role = task._additional_attributes.get("role")
+        role_str = f" @{Fore.MAGENTA}{role}{Style.RESET_ALL}" if role else ""
 
         print(
-            f"\n{Fore.YELLOW}▶ Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
+            f"\n{Fore.YELLOW}▶ Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]{role_str}"
         )
-        print(f"  {display_desc}\n")
+        # Show full description (wrap at ~75 chars per line, max 3 lines)
+        import textwrap
+
+        wrapped = textwrap.wrap(task_desc, width=75)
+        for line in wrapped[:3]:
+            print(f"  {line}")
+        if len(wrapped) > 3:
+            print(f"  ...")
+        print()
 
         # Collect dependency outputs
         dep_outputs = [

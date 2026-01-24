@@ -241,8 +241,7 @@ def run_execution_loop(objective: str) -> str:
         else:
             logger.error(f"Task #{next_task.id} failed: {result.error}")
 
-        task_manager.print_task_list()
-        time.sleep(0.5)
+        time.sleep(0.3)
 
     execution_time = time.time() - start_time
     logger.info(
