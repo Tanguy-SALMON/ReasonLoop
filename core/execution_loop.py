@@ -174,8 +174,8 @@ def _save_intelligence_output(task_manager: TaskManager, objective: str) -> None
         logger.warning(f"Failed to save intelligence output: {e}")
 
 
-def run_execution_loop(objective: str) -> str:
-    """Run the main execution loop and return the result file path"""
+def run_execution_loop(objective: str) -> tuple:
+    """Run the main execution loop and return (result_file_path, success, failed_count)"""
     import re
 
     from utils.metrics import MetricsManager
@@ -221,6 +221,8 @@ def run_execution_loop(objective: str) -> str:
         class Style:
             BRIGHT = RESET_ALL = ""
 
+    failed_tasks = 0
+
     while True:
         cycle_count += 1
         progress_bar = "█" * completed_tasks + "░" * (total_tasks - completed_tasks)
@@ -232,20 +234,29 @@ def run_execution_loop(objective: str) -> str:
 
         next_task = task_manager.find_next_task()
         if not next_task:
-            print(f"\n{Fore.GREEN}✓ All tasks completed!{Style.RESET_ALL}\n")
+            # Check if all tasks are actually completed or some failed
+            if failed_tasks == 0 and completed_tasks == total_tasks:
+                print(f"\n{Fore.GREEN}✓ All tasks completed!{Style.RESET_ALL}\n")
+            elif failed_tasks > 0:
+                print(
+                    f"\n{Fore.RED}✗ Execution stopped: {failed_tasks} task(s) failed{Style.RESET_ALL}\n"
+                )
+            else:
+                print(f"\n{Fore.YELLOW}⚠ No more executable tasks{Style.RESET_ALL}\n")
             break
 
         result = task_manager.execute_task(next_task)
         if result.success:
             completed_tasks += 1
         else:
+            failed_tasks += 1
             logger.error(f"Task #{next_task.id} failed: {result.error}")
 
         time.sleep(0.3)
 
     execution_time = time.time() - start_time
     logger.info(
-        f"COMPLETE: {completed_tasks}/{total_tasks} tasks in {execution_time:.2f}s"
+        f"COMPLETE: {completed_tasks}/{total_tasks} tasks ({failed_tasks} failed) in {execution_time:.2f}s"
     )
 
     # Update output summary with task details if web crawler was used
@@ -286,10 +297,18 @@ def run_execution_loop(objective: str) -> str:
 
     # Pretty print the summary to terminal
     _print_session_summary(
-        filename, objective, execution_time, completed_tasks, total_tasks, summary
+        filename,
+        objective,
+        execution_time,
+        completed_tasks,
+        total_tasks,
+        summary,
+        failed_tasks,
     )
 
-    return filename
+    # Return tuple: (filename, success, failed_count)
+    success = failed_tasks == 0 and completed_tasks == total_tasks
+    return (filename, success, failed_tasks)
 
 
 def _print_session_summary(
@@ -299,6 +318,7 @@ def _print_session_summary(
     completed_tasks: int,
     total_tasks: int,
     summary: str,
+    failed_tasks: int = 0,
 ) -> None:
     """Print a nicely formatted session summary to terminal."""
     try:
@@ -306,23 +326,49 @@ def _print_session_summary(
     except ImportError:
 
         class Fore:
-            YELLOW = GREEN = WHITE = CYAN = ""
+            YELLOW = GREEN = WHITE = CYAN = RED = ""
 
         class Style:
             BRIGHT = RESET_ALL = ""
 
-    # Header
-    print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}{Style.BRIGHT}SESSION COMPLETE{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
+    # Determine status
+    all_completed = completed_tasks == total_tasks and failed_tasks == 0
+    has_failures = failed_tasks > 0
+
+    # Header - red if failed, green if all completed, yellow otherwise
+    if has_failures:
+        header_color = Fore.RED
+        status_text = "SESSION FAILED"
+    elif all_completed:
+        header_color = Fore.GREEN
+        status_text = "SESSION COMPLETE"
+    else:
+        header_color = Fore.YELLOW
+        status_text = "SESSION INCOMPLETE"
+
+    print(f"\n{header_color}{'─' * 80}{Style.RESET_ALL}")
+    print(f"{header_color}{Style.BRIGHT}{status_text}{Style.RESET_ALL}")
+    print(f"{header_color}{'─' * 80}{Style.RESET_ALL}\n")
 
     # Stats
     print(
         f"{Fore.WHITE}Objective:{Style.RESET_ALL} {objective[:70]}{'...' if len(objective) > 70 else ''}"
     )
     print(f"{Fore.WHITE}Duration:{Style.RESET_ALL}  {execution_time:.1f}s")
+
+    # Task count - green if all completed, red if failures, yellow/orange otherwise
+    if all_completed:
+        task_color = Fore.GREEN
+        task_status = "completed"
+    elif has_failures:
+        task_color = Fore.RED
+        task_status = f"completed ({failed_tasks} failed)"
+    else:
+        task_color = Fore.YELLOW
+        task_status = "completed"
+
     print(
-        f"{Fore.WHITE}Tasks:{Style.RESET_ALL}     {Fore.GREEN}{completed_tasks}/{total_tasks} completed{Style.RESET_ALL}"
+        f"{Fore.WHITE}Tasks:{Style.RESET_ALL}     {task_color}{completed_tasks}/{total_tasks} {task_status}{Style.RESET_ALL}"
     )
     print(
         f"{Fore.WHITE}Saved to:{Style.RESET_ALL}  {Fore.CYAN}{filename}{Style.RESET_ALL}"

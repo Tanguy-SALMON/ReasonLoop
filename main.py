@@ -125,16 +125,31 @@ class ReasonLoopCLI:
             return False
 
         start_time = time.time()
-        result_file = run_execution_loop(self.config.objective)
+        result = run_execution_loop(self.config.objective)
         end_time = time.time()
+
+        # Handle both old (str) and new (tuple) return formats
+        if isinstance(result, tuple):
+            result_file, phase1_success, failed_count = result
+        else:
+            result_file = result
+            phase1_success = bool(result_file)
+            failed_count = 0
 
         # Display results for phase 1
         elapsed = end_time - start_time
-        if result_file:
+        if result_file and phase1_success:
             print(
                 f"\n{Fore.GREEN}✓ Phase 1 completed in {elapsed:.2f}s{Style.RESET_ALL}"
             )
             print(f"{Fore.CYAN}📄 Results:{Style.RESET_ALL} {result_file}")
+        elif result_file and not phase1_success:
+            print(
+                f"\n{Fore.RED}✗ Phase 1 FAILED in {elapsed:.2f}s ({failed_count} task(s) failed){Style.RESET_ALL}"
+            )
+            print(f"{Fore.CYAN}📄 Results:{Style.RESET_ALL} {result_file}")
+            self.metrics.save_session()
+            return False
         else:
             print(f"\n{Fore.RED}✗ Phase 1 failed after {elapsed:.2f}s{Style.RESET_ALL}")
             self.metrics.save_session()
@@ -157,13 +172,26 @@ class ReasonLoopCLI:
             phase2_objective = f"Continue from previous analysis. Generate email designs based on the website intelligence gathered. Original target: {self.config.objective}"
 
             start_time2 = time.time()
-            result_file2 = run_execution_loop(phase2_objective)
+            result2 = run_execution_loop(phase2_objective)
             end_time2 = time.time()
 
+            # Handle both old (str) and new (tuple) return formats
+            if isinstance(result2, tuple):
+                result_file2, phase2_success, failed_count2 = result2
+            else:
+                result_file2 = result2
+                phase2_success = bool(result_file2)
+                failed_count2 = 0
+
             elapsed2 = end_time2 - start_time2
-            if result_file2:
+            if result_file2 and phase2_success:
                 print(
                     f"\n{Fore.GREEN}✓ Phase 2 completed in {elapsed2:.2f}s{Style.RESET_ALL}"
+                )
+                print(f"{Fore.CYAN}📄 Results:{Style.RESET_ALL} {result_file2}")
+            elif result_file2 and not phase2_success:
+                print(
+                    f"\n{Fore.RED}✗ Phase 2 FAILED in {elapsed2:.2f}s ({failed_count2} task(s) failed){Style.RESET_ALL}"
                 )
                 print(f"{Fore.CYAN}📄 Results:{Style.RESET_ALL} {result_file2}")
             else:
