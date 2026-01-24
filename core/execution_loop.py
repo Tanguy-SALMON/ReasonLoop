@@ -176,8 +176,26 @@ def _save_intelligence_output(task_manager: TaskManager, objective: str) -> None
 
 def run_execution_loop(objective: str) -> str:
     """Run the main execution loop and return the result file path"""
+    import re
+
+    from utils.metrics import MetricsManager
+
     logger.info(f"Starting: {objective}")
     start_time = time.time()
+
+    # Extract domain from objective URL and set metrics output directory
+    url_match = re.search(r"https?://[^\s,]+", objective)
+    if url_match:
+        try:
+            from utils.url_normalizer import normalize_url
+
+            url = url_match.group(0).rstrip(".,;:)")
+            _, clean_domain = normalize_url(url)
+            output_dir = os.path.join("output", clean_domain)
+            MetricsManager().set_output_dir(output_dir)
+            logger.info(f"Metrics will be saved to: {output_dir}/metrics/")
+        except Exception as e:
+            logger.debug(f"Could not set metrics output dir: {e}")
 
     task_manager = TaskManager(objective)
     tasks = task_manager.create_initial_tasks()

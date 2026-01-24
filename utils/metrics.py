@@ -159,12 +159,18 @@ class MetricsManager:
                 cls._instance._sessions = {}
                 cls._instance._current_session_id = None
                 cls._instance._metrics_dir = "metrics"
+                cls._instance._output_dir = None  # Domain-based output directory
 
                 # Create metrics directory if it doesn't exist
                 if not os.path.exists(cls._instance._metrics_dir):
                     os.makedirs(cls._instance._metrics_dir)
 
         return cls._instance
+
+    def set_output_dir(self, output_dir: str):
+        """Set the domain-based output directory for saving metrics"""
+        self._output_dir = output_dir
+        logger.debug(f"Set metrics output directory: {output_dir}")
 
     def start_session(self, session_id: Optional[str] = None) -> str:
         """Start a new metrics session"""
@@ -194,7 +200,7 @@ class MetricsManager:
         return task
 
     def save_session(self, session_id: Optional[str] = None):
-        """Save session metrics to disk"""
+        """Save session metrics to disk (both to metrics/ and output/[domain]/ if set)"""
         if session_id is None:
             session_id = self._current_session_id
 
@@ -204,12 +210,23 @@ class MetricsManager:
 
         session = self._sessions[session_id]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{self._metrics_dir}/{session_id}_{timestamp}.json"
 
+        # Always save to default metrics directory
+        filename = f"{self._metrics_dir}/{session_id}_{timestamp}.json"
         with open(filename, "w") as f:
             json.dump(session.to_dict(), f, indent=2)
-
         logger.info(f"Saved session metrics to {filename}")
+
+        # Also save to domain-based output directory if set
+        if self._output_dir:
+            output_metrics_dir = os.path.join(self._output_dir, "metrics")
+            os.makedirs(output_metrics_dir, exist_ok=True)
+            output_filename = f"{output_metrics_dir}/session_{timestamp}.json"
+            with open(output_filename, "w") as f:
+                json.dump(session.to_dict(), f, indent=2)
+            logger.info(f"Saved session metrics to {output_filename}")
+            return output_filename
+
         return filename
 
 
