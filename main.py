@@ -66,7 +66,7 @@ class ReasonLoopCLI:
         """Display welcome banner"""
         print(f"\n{Fore.CYAN}{'=' * 80}")
         print(
-            f"{Fore.CYAN}{Style.BRIGHT}ReasonLoop v0.2.0{Style.RESET_ALL} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"{Fore.CYAN}{Style.BRIGHT}ReasonLoop v0.2.1{Style.RESET_ALL} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
         print(f"{Fore.CYAN}{'=' * 80}{Style.RESET_ALL}\n")
 

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-01-24
+
+### Added
+- **Save Email Templates Ability**: New `save-email-templates` ability that extracts HTML email templates from task output and saves them to `output/[domain]/emails/` folder
+- Automatic detection of HTML code blocks and template markers (e.g., `<!-- TEMPLATE 1: MINIMALIST -->`)
+- Support for extracting multiple templates (minimalist, bold, elegant) from a single task output
+
+### Changed
+- Updated `email_campaign_generator` agent to v1.2 with streamlined 4-task pipeline (was 5 tasks)
+- Task manager now passes full dependency output to `save-email-templates` ability (not truncated)
+- Replaced `write-file` with dedicated `save-email-templates` ability for better HTML handling
+
+### Fixed
+- Email templates now properly saved to `output/[domain]/emails/` folder instead of being lost in session logs
+
 ## [0.2.0] - 2026-01-24
 
 ### Added

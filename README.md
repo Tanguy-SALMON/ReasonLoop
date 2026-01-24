@@ -12,6 +12,7 @@ A modular AI agent system with comprehensive metrics tracking, multi-provider LL
 - **🌐 Deep Web Scraping**: Playwright-based crawler with JavaScript rendering
 - **🎨 Website Intelligence**: Extract brand identity, products, design systems
 - **📧 Email Campaign Generation**: Automated branded email creation from website analysis
+- **💾 Email Template Saving**: Automatic extraction and saving of HTML templates to organized folders
 - **📸 Screenshot Capture**: Full-page screenshots with design metrics extraction
 
 
@@ -47,10 +48,11 @@ python main.py --objective "Create a technical specification for a REST API"
 ### Advanced Usage
 
 ```bash
-# Use specific agent
+# Use specific agent (emails saved to output/example.com/emails/)
 python main.py --template email_campaign_generator --objective "Generate emails for https://example.com"
 
 # Website intelligence and email campaign generation
+# Outputs: output/yoursite.com/emails/minimalist.html, bold.html, elegant.html
 python main.py --template email_campaign_generator --objective "Generate branded emails for https://yoursite.com" --verbose
 
 # Deep website scraping with screenshots
