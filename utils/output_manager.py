@@ -21,7 +21,8 @@ class OutputManager:
       ├── www.shiseido.com/         # Simple domain-based folders
       │   ├── screenshots/
       │   ├── emails/
-      │   ├── data/
+      │   ├── intelligence/
+      │   ├── metrics/
       │   └── summary.md
       └── www.decathlon.co.th/
           └── ...
@@ -48,7 +49,9 @@ class OutputManager:
         # Subdirectories
         self.screenshots_dir = os.path.join(self.session_dir, "screenshots")
         self.emails_dir = os.path.join(self.session_dir, "emails")
-        self.data_dir = os.path.join(self.session_dir, "data")
+        self.intelligence_dir = os.path.join(self.session_dir, "intelligence")
+        # Keep data_dir as alias for backward compatibility
+        self.data_dir = self.intelligence_dir
 
         logger.info(f"Output session: {self.session_dir}")
 
@@ -61,7 +64,7 @@ class OutputManager:
         """
         os.makedirs(self.screenshots_dir, exist_ok=True)
         os.makedirs(self.emails_dir, exist_ok=True)
-        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.intelligence_dir, exist_ok=True)
 
         logger.info(f"Created output structure in: {self.session_dir}")
         return self.session_dir
@@ -76,9 +79,13 @@ class OutputManager:
         """Get path for email template file"""
         return os.path.join(self.emails_dir, filename)
 
+    def get_intelligence_path(self, filename: str) -> str:
+        """Get path for intelligence file (JSON, etc.)"""
+        return os.path.join(self.intelligence_dir, filename)
+
     def get_data_path(self, filename: str) -> str:
-        """Get path for data file (JSON, etc.)"""
-        return os.path.join(self.data_dir, filename)
+        """Get path for data file (JSON, etc.) - alias for get_intelligence_path"""
+        return self.get_intelligence_path(filename)
 
     def get_summary_path(self) -> str:
         """Get path for summary markdown file"""
