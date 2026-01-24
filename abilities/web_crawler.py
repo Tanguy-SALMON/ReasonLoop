@@ -771,6 +771,7 @@ def web_crawler_with_screenshots_ability(
             url = f"https://{url}"
 
     # Normalize URL to optimal base URL
+    from utils.output_manager import create_output_session
     from utils.url_normalizer import normalize_url
 
     normalized_url, clean_domain = normalize_url(url)
@@ -778,14 +779,22 @@ def web_crawler_with_screenshots_ability(
     logger.info(f"Using domain identifier: {clean_domain}")
     url = normalized_url
 
-    # Extract screenshot_dir from task description if specified
+    # Create organized output session with timestamp
+    output_manager = create_output_session(clean_domain)
+    screenshot_dir = output_manager.get_screenshot_path()
+    logger.info(f"Output session: {output_manager.session_dir}")
+
+    # Extract screenshot_dir from task description if specified (DEPRECATED - using output_manager now)
     # Patterns: "Save to output/domain/screenshots/", "save screenshots to output/..."
-    screenshot_dir_match = re.search(
+    screenshot_dir_match_old = re.search(
         r"(?:save|Save).*?(?:to|in)\s+(output/[^\s,]+)", original_input
     )
-    if screenshot_dir_match:
-        screenshot_dir = screenshot_dir_match.group(1).rstrip("/")
-        logger.info(f"Using screenshot directory from task: {screenshot_dir}")
+    # Keep old behavior for backward compatibility, but prefer output_manager
+    if screenshot_dir_match_old:
+        custom_dir = screenshot_dir_match_old.group(1).rstrip("/")
+        logger.info(
+            f"Custom screenshot directory requested: {custom_dir} (using output_manager instead)"
+        )
 
     # Extract max_pages from task description if specified
     # Patterns: "max_pages=5", "max 5 pages", "up to 5 pages"
@@ -810,7 +819,22 @@ def web_crawler_with_screenshots_ability(
             )
         )
 
-        return json.dumps(result.to_dict(), indent=2)
+        # Create summary file
+        output_manager.create_summary(
+            url=url,
+            pages_crawled=result.pages_crawled,
+            products_found=len(result.all_products),
+            emails_created=0,  # Emails created in separate step
+            design_system_extracted=bool(result.design_analysis),
+            notes=f"Crawled {result.pages_crawled} pages in {result.crawl_time:.1f}s",
+        )
+
+        # Add session info to result
+        result_dict = result.to_dict()
+        result_dict["output_session"] = output_manager.session_dir
+        result_dict["summary_file"] = output_manager.get_summary_path()
+
+        return json.dumps(result_dict, indent=2)
 
     except Exception as e:
         logger.error(f"Web crawler with screenshots failed: {e}", exc_info=True)
