@@ -125,11 +125,56 @@ class TaskManager:
         role = task._additional_attributes.get("role")
         output = self._execute_ability(task.ability, context, task.id, role=role)
 
-        task.mark_complete(output)
-        self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
-        print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
+        # Check if output indicates an error
+        is_error = self._is_error_output(output)
 
-        return Result(task_id=task.id, content=output, success=True)
+        if is_error:
+            task.mark_failed(output)
+            self.session_summary += (
+                f"\n\nTask {task.id} - {task_desc}:\nFAILED: {output}"
+            )
+            print(f"{Fore.RED}✗ Task #{task.id} failed{Style.RESET_ALL}\n")
+            return Result(task_id=task.id, content=output, success=False, error=output)
+        else:
+            task.mark_complete(output)
+            self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
+            print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
+            return Result(task_id=task.id, content=output, success=True)
+
+    def _is_error_output(self, output: str) -> bool:
+        """Check if the output indicates an error/failure"""
+        if not output:
+            return True
+
+        # Check for common error patterns
+        error_patterns = [
+            '"error":',  # JSON error field
+            "Error calling",  # API call errors
+            "Error:",  # Generic error prefix
+            "API error:",  # API errors
+            "failed:",  # Failure messages
+            "Exception:",  # Python exceptions
+            "Traceback",  # Python tracebacks
+            "400 Client Error",  # HTTP 400
+            "401 Unauthorized",  # HTTP 401
+            "403 Forbidden",  # HTTP 403
+            "404 Not Found",  # HTTP 404
+            "500 Internal",  # HTTP 500
+            "502 Bad Gateway",  # HTTP 502
+            "503 Service",  # HTTP 503
+            "Connection refused",  # Network errors
+            "timed out",  # Timeout errors
+            "Read timed out",  # Read timeout
+            "ConnectTimeout",  # Connection timeout
+            "ConnectionPool",  # Connection pool errors
+        ]
+
+        output_lower = output.lower()
+        for pattern in error_patterns:
+            if pattern.lower() in output_lower:
+                return True
+
+        return False
 
     def _execute_ability(
         self, ability: str, context: dict, task_id: int, role: Optional[str] = None
