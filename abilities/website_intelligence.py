@@ -683,14 +683,24 @@ def website_intelligence_ability(task_input: str, **kwargs) -> str:
     logger.info(f"Starting website intelligence extraction for: {task_input[:100]}")
 
     # Extract URL from task input
+    # First try with protocol (https:// or http://)
     url_match = re.search(r"https?://[^\s,;:)]+", task_input)
     if url_match:
         url = url_match.group(0).rstrip(".,;:)")
     else:
-        logger.error(f"No URL found in task: {task_input[:100]}")
-        return json.dumps(
-            {"error": "No URL found in task description", "input": task_input[:200]}
+        # Try to find URL without protocol (e.g., www.example.com or example.com/path)
+        url_match = re.search(
+            r"(?:www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?[^\s,;:)\"']*",
+            task_input,
         )
+        if url_match:
+            url = "https://" + url_match.group(0).rstrip(".,;:)")
+            logger.info(f"Added https:// prefix to URL: {url}")
+        else:
+            logger.error(f"No URL found in task: {task_input[:100]}")
+            return json.dumps(
+                {"error": "No URL found in task description", "input": task_input[:200]}
+            )
 
     # Normalize URL and create output session
     normalized_url, clean_domain = normalize_url(url)
