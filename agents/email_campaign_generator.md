@@ -2,11 +2,11 @@
 name: email_campaign_generator
 description: Generate branded email designs from website analysis - crawls site, extracts design system, creates HTML emails
 author: ReasonLoop
-version: 1.1
+version: 1.2
 abilities:
   - web-crawl-screenshots
   - text-completion
-  - write-file
+  - save-email-templates
 tags:
   - email-marketing
   - email-design
@@ -21,9 +21,9 @@ Your objective: {objective}
 IMPORTANT: Extract the domain from the URL (e.g., "th.cos.com" from "https://th.cos.com").
 All outputs MUST be saved to: output/[DOMAIN]/ (e.g., output/th.cos.com/)
 
-Create a list of 5 tasks to generate 3 branded email designs from the target website.
+Create a list of 4 tasks to generate 3 branded email designs from the target website.
 
-Available abilities: [web-crawl-screenshots, text-completion, write-file]
+Available abilities: [web-crawl-screenshots, text-completion, save-email-templates]
 
 You MUST respond with ONLY a JSON array with these fields for each task:
 - id: sequential number starting at 1
@@ -66,24 +66,13 @@ Each template must include:
 
 Use EXACT colors, fonts, and button styles from the design system.
 
-### Task 4: Content Agent - Write Email Copy
-Use text-completion to create compelling content for each design:
-- Subject line (max 50 chars)
-- Preview text (max 100 chars)
-- Headline (max 10 words)
-- Body copy (2-3 short paragraphs)
-- CTA button text
-- Product descriptions
+### Task 4: Save Email Templates
+Use save-email-templates to extract the HTML templates from Task 3 and save them to output/[DOMAIN]/emails/:
+- minimalist.html
+- bold.html  
+- elegant.html
 
-Match the brand voice: analyze if the brand is luxury, playful, professional, or casual.
-
-### Task 5: Save & Report
-Use write-file to save all outputs to output/[DOMAIN]/:
-- 3 HTML email files: output/[DOMAIN]/emails/minimalist.html, bold.html, elegant.html
-- Design system: output/[DOMAIN]/design_system.json
-- Summary report: output/[DOMAIN]/report.md
-
-Return the file paths to the requester.
+The ability will automatically detect and extract HTML code blocks from the previous task output.
 
 ## Example Response Format
 
@@ -111,23 +100,16 @@ Example for https://th.cos.com:
   },
   {
     "id": 3,
-    "task": "Using the design system, create 3 HTML email templates: (1) Minimalist - single column, clean whitespace, (2) Bold - strong CTAs, vibrant colors, (3) Elegant - premium, refined. Each must have header, hero, products section, value props, and footer. Use exact brand colors and button styles.",
+    "task": "Using the exact design system from task 2, create 3 different branded HTML email templates: (1) Minimalist - clean single column with lots of whitespace, (2) Bold - strong CTAs with vibrant brand colors, (3) Elegant - sophisticated premium feel with refined typography. Each template MUST include: Header with logo placeholder, Hero section with headline and CTA, Product showcase (2-3 products with image/price placeholders), Value proposition section, Footer with social links and unsubscribe. Use EXACT colors, fonts, button styles from design system. Output each template in a separate ```html code block with a comment like <!-- TEMPLATE 1: MINIMALIST --> at the start.",
     "ability": "text-completion",
     "dependent_task_ids": [2],
     "status": "incomplete"
   },
   {
     "id": 4,
-    "task": "Write email copy for all 3 designs: subject lines, preview text, headlines, body copy, CTA text, and product descriptions. Match the brand voice (luxury/playful/professional). Ensure copy fits each design's personality.",
-    "ability": "text-completion",
-    "dependent_task_ids": [2, 3],
-    "status": "incomplete"
-  },
-  {
-    "id": 5,
-    "task": "Save all outputs to output/th.cos.com/: emails/minimalist.html, emails/bold.html, emails/elegant.html, design_system.json, and report.md summarizing all created files.",
-    "ability": "write-file",
-    "dependent_task_ids": [3, 4],
+    "task": "Extract the HTML email templates from task 3 output and save them to output/th.cos.com/emails/ as minimalist.html, bold.html, and elegant.html. Domain: th.cos.com",
+    "ability": "save-email-templates",
+    "dependent_task_ids": [3],
     "status": "incomplete"
   }
 ]

@@ -116,12 +116,14 @@ class TaskManager:
 
         # Prepare context from dependencies
         context = ""
+        full_dependency_output = ""  # Full output for abilities that need it
         for dep_id in task.dependent_task_ids:
             dep_task = self.get_task_by_id(dep_id)
             if dep_task and dep_task.output:
                 context += (
                     f"\n\nOutput from task #{dep_id}:\n{dep_task.output[:500]}..."
                 )
+                full_dependency_output += f"\n\n{dep_task.output}"
 
         # Build prompt
         task_prompt = f"Complete this task: {task_desc}\nObjective: {self.objective}"
@@ -133,6 +135,26 @@ class TaskManager:
             role = self._determine_role(task_desc)
             output = execute_ability(
                 task.ability, task_prompt, task_id=task.id, role=role
+            )
+        elif task.ability == "save-email-templates":
+            # Extract domain from task description or objective
+            import re
+
+            domain = None
+            domain_match = re.search(r"Domain:\s*([^\s,]+)", task_desc)
+            if domain_match:
+                domain = domain_match.group(1)
+            else:
+                # Try to extract from objective URL
+                url_match = re.search(r"https?://([^/\s]+)", self.objective)
+                if url_match:
+                    domain = url_match.group(1)
+
+            output = execute_ability(
+                task.ability,
+                full_dependency_output.strip(),  # Pass full HTML content
+                domain=domain,
+                task_id=task.id,
             )
         else:
             output = execute_ability(task.ability, task_desc, task_id=task.id)
