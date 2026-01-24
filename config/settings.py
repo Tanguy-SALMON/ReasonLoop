@@ -1,11 +1,12 @@
 # config/settings.py
-import os
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()  # Load .env file
 except ImportError:
     # python-dotenv not installed, environment variables will still work
@@ -69,6 +70,10 @@ class Settings:
         self._load_env_var("XAI_MODEL_PLANNER")
         self._load_env_var("XAI_MODEL_EXECUTOR")
         self._load_env_var("XAI_MODEL_REVIEWER")
+        # Creative team roles
+        self._load_env_var("XAI_MODEL_COPYWRITER")
+        self._load_env_var("XAI_MODEL_ART_DIRECTOR")
+        self._load_env_var("XAI_MODEL_DEVELOPER")
 
         # Z.ai SDK settings
         self._load_env_var("ZAI_API_KEY")
