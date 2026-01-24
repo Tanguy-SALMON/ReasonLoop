@@ -202,28 +202,95 @@ def _extract_prompt_from_input(raw_input: str) -> str:
                 for field in prompt_fields:
                     if field in template and isinstance(template[field], str):
                         return template[field]
+                # Also check nested structures inside email_template
+                for key in ["hero", "hero_section", "hero_image", "visual_elements"]:
+                    if key in template and isinstance(template[key], dict):
+                        for field in prompt_fields:
+                            if field in template[key] and isinstance(
+                                template[key][field], str
+                            ):
+                                return template[key][field]
+
+        # Recursive search for image_prompt in any nested structure
+        def find_image_prompt(obj, depth=0):
+            if depth > 5:  # Prevent infinite recursion
+                return None
+            if isinstance(obj, dict):
+                for field in prompt_fields:
+                    if (
+                        field in obj
+                        and isinstance(obj[field], str)
+                        and len(obj[field]) > 20
+                    ):
+                        return obj[field]
+                for value in obj.values():
+                    result = find_image_prompt(value, depth + 1)
+                    if result:
+                        return result
+            return None
+
+        recursive_prompt = find_image_prompt(data)
+        if recursive_prompt:
+            return recursive_prompt
 
         # Build prompt from available design data as fallback
         prompt_parts = ["Professional email hero banner"]
 
-        # Extract theme/campaign info
-        theme = data.get("theme") or data.get("campaign") or data.get("name", "")
-        if theme and isinstance(theme, str):
+        # Extract theme/campaign info from nested structures too
+        theme = None
+        for key in ["theme", "campaign", "name"]:
+            if key in data and isinstance(data[key], str):
+                theme = data[key]
+                break
+            # Check inside email_template
+            if "email_template" in data and isinstance(data["email_template"], dict):
+                if key in data["email_template"] and isinstance(
+                    data["email_template"][key], str
+                ):
+                    theme = data["email_template"][key]
+                    break
+
+        if theme:
             prompt_parts.append(f"for {theme}")
 
-        # Extract persona/style
+        # Extract persona/style from various locations
         persona = data.get("persona", "")
+        if (
+            not persona
+            and "email_template" in data
+            and isinstance(data["email_template"], dict)
+        ):
+            persona = data["email_template"].get("persona", "")
+        # Also try to extract from name field
+        if not persona:
+            name = theme or ""
+            name_lower = name.lower()
+            if "minimalist" in name_lower:
+                persona = "minimalist"
+            elif "bold" in name_lower:
+                persona = "bold"
+            elif "elegant" in name_lower:
+                persona = "elegant"
+
         if persona and isinstance(persona, str):
             style_map = {
-                "minimalist": "clean minimalist style with lots of negative space",
-                "bold": "vibrant energetic style with dynamic composition",
-                "elegant": "sophisticated luxurious style with refined aesthetics",
+                "minimalist": "clean minimalist style with lots of negative space, subtle tones",
+                "bold": "vibrant energetic style with dynamic composition, bright saturated colors",
+                "elegant": "sophisticated luxurious style with refined aesthetics, premium feel",
             }
             style_desc = style_map.get(persona.lower(), f"{persona} style")
             prompt_parts.append(style_desc)
 
-        # Extract colors (properly formatted)
+        # Extract colors (properly formatted) from various locations
         colors = data.get("colors") or data.get("color_palette", {})
+        if (
+            not colors
+            and "email_template" in data
+            and isinstance(data["email_template"], dict)
+        ):
+            colors = data["email_template"].get("colors") or data["email_template"].get(
+                "color_palette", {}
+            )
         if isinstance(colors, dict):
             color_values = [
                 v for v in colors.values() if isinstance(v, str) and v.startswith("#")
