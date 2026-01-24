@@ -110,7 +110,9 @@ class TaskManager:
             "dependency_output": full_dep_output,
         }
 
-        output = self._execute_ability(task.ability, context, task.id)
+        # Get role from task if specified (for multi-agent workflows)
+        role = task._additional_attributes.get("role")
+        output = self._execute_ability(task.ability, context, task.id, role=role)
 
         task.mark_complete(output)
         self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
@@ -118,7 +120,9 @@ class TaskManager:
 
         return Result(task_id=task.id, content=output, success=True)
 
-    def _execute_ability(self, ability: str, context: dict, task_id: int) -> str:
+    def _execute_ability(
+        self, ability: str, context: dict, task_id: int, role: Optional[str] = None
+    ) -> str:
         """Execute ability with context"""
 
         # text-completion: build a prompt with task description and dependencies
@@ -126,9 +130,13 @@ class TaskManager:
             prompt = f"Complete this task: {context['task_description']}\nObjective: {context['objective']}"
             if context["dependency_output"]:
                 prompt += (
-                    f"\n\nPrevious outputs:\n{context['dependency_output'][:2000]}"
+                    f"\n\nPrevious outputs:\n{context['dependency_output'][:4000]}"
                 )
-            return execute_ability(ability, prompt, task_id=task_id, role="executor")
+            # Use specified role or default to executor
+            execution_role = role or "executor"
+            return execute_ability(
+                ability, prompt, task_id=task_id, role=execution_role
+            )
 
         # All other abilities: pass dependency output (or task description) plus domain
         content = context["dependency_output"] or context["task_description"]
@@ -156,8 +164,12 @@ class TaskManager:
             desc = task._additional_attributes.get("insight", task.description)
             desc = desc[:117] + "..." if len(desc) > 120 else desc
 
+            # Show role if present (for multi-agent workflows)
+            role = task._additional_attributes.get("role")
+            role_str = f" @{Fore.MAGENTA}{role}{Style.RESET_ALL}" if role else ""
+
             print(
-                f"{icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
+                f"{icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]{role_str}"
             )
             print(f"  {desc}")
             if task.dependent_task_ids:
