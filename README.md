@@ -86,12 +86,12 @@ result = run_agent(
 
 ### Real-World Example: BE-Campaign Integration
 
-ReasonLoop is designed to be integrated into larger applications using an **Asynchronous Sidecar** strategy. For example, **BE-Campaign** (an email automation platform) uses ReasonLoop agents for:
+ReasonLoop is designed to be integrated into larger applications using an **Asynchronous Sidecar** strategy:
 
 - **Web Scraping**: Crawl client websites to extract brand assets
 - **AI Analysis**: Analyze brand identity, tone, colors, and products
 - **Data Enrichment**: Adjust email content tone based on brand intelligence
-- **Formatted Document Generation**: Create branded HTML email templates and reports
+- **Formatted Document Generation**: Create branded HTML templates and reports
 
 ```python
 # In BE-Campaign's email automation workflow

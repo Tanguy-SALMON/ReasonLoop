@@ -646,6 +646,37 @@ def email_design_ability(
                 output_dir = os.path.join(output_dir, "emails")
                 logger.info(f"Using output session emails folder: {output_dir}")
 
+        # If still no output_dir, try to extract from URL in brand data
+        if not output_dir:
+            import re
+
+            from utils.url_normalizer import normalize_url
+
+            # Look for URL in brand data
+            url = (
+                brand_data.get("url")
+                or brand_data.get("website_url")
+                or brand_data.get("source_url")
+            )
+            if not url:
+                # Try to find URL in the JSON string
+                url_match = re.search(
+                    r"https?://[^\s\",}]+",
+                    brand_intelligence_json
+                    if isinstance(brand_intelligence_json, str)
+                    else "",
+                )
+                if url_match:
+                    url = url_match.group(0).rstrip(".,;:)")
+
+            if url:
+                try:
+                    _, clean_domain = normalize_url(url)
+                    output_dir = os.path.join("output", clean_domain, "emails")
+                    logger.info(f"Auto-detected output folder: {output_dir}")
+                except Exception as e:
+                    logger.debug(f"Could not extract domain from URL: {e}")
+
         # Create orchestrator and generate designs
         orchestrator = DesignOrchestrator(num_designs=num_designs)
         designs = orchestrator.generate_designs(
