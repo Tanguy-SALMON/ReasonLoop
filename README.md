@@ -63,17 +63,6 @@ python main.py --objective "Analyze https://example.com for brand identity, prod
 python main.py --objective "Create a business plan" --verbose
 ```
 
-## 🏗️ Architecture
-
-
-### Agent Roles & Model Selection
-
-- **🤖 Orchestrator**: High-level coordination and planning
-- **📋 Planner**: Task breakdown and strategy development  
-- **⚡ Executor**: Content generation and implementation
-- **🔍 Reviewer**: Analysis, validation, and quality assurance
-
-## 🔧 Development
 
 ### Adding New Abilities
 
@@ -97,32 +86,12 @@ python main.py --objective "Use my custom ability to process this data"
 
 ### Creating Agent Definitions
 
-1. Add agent definition to `agents/`:
-```markdown
----
-name: my_custom_agent
-description: My custom agent description
-author: ReasonLoop
-version: 1.0
-abilities:
-  - text-completion
-  - web-search
-tags:
-  - custom
----
-
-You are a specialized agent...
-
-Your objective: {objective}
-```
-
 2. Use with `--template` flag:
 ```bash
 python main.py --template my_custom_agent --objective "Your objective here"
 ```
 
 
-### Debug Mode
 
 ```bash
 # Enable verbose logging

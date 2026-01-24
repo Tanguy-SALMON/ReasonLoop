@@ -18,18 +18,18 @@ PROMPT_TEMPLATES = {}
 
 def load_templates_from_directory(directory_path: str = "agents") -> None:
     """Load all agent definition files from the specified directory"""
-    logger.info(f"Loading agent definitions from {directory_path}")
+    logger.debug(f"Loading agent definitions from {directory_path}")
 
     if not os.path.exists(directory_path):
         logger.warning(f"Agent directory {directory_path} not found")
         return
 
+    loaded_count = 0
     for filename in os.listdir(directory_path):
         if filename.endswith(".md"):
             try:
                 file_path = os.path.join(directory_path, filename)
                 template_name = os.path.splitext(filename)[0]
-                print(template_name)
 
                 with open(file_path, "r", encoding="utf-8") as file:
                     content = file.read()
@@ -43,7 +43,7 @@ def load_templates_from_directory(directory_path: str = "agents") -> None:
                             frontmatter = yaml.safe_load(parts[1])
                             content = parts[2].strip()
                         except Exception as e:
-                            logger.warning(
+                            logger.debug(
                                 f"Error parsing frontmatter in {filename}: {e}"
                             )
 
@@ -53,10 +53,14 @@ def load_templates_from_directory(directory_path: str = "agents") -> None:
 
                 # Add to templates dictionary
                 PROMPT_TEMPLATES[template_name] = content
-                logger.info(f"Loaded template: {template_name}")
+                loaded_count += 1
+                logger.debug(f"Loaded: {template_name}")
 
             except Exception as e:
-                logger.error(f"Error loading template {filename}: {e}")
+                logger.error(f"Error loading {filename}: {e}")
+
+    if loaded_count > 0:
+        logger.info(f"✓ Loaded {loaded_count} agent definitions")
 
 
 def get_prompt_template(template_name: str, **kwargs: Any) -> str:
