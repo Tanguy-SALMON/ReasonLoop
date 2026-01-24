@@ -1,6 +1,6 @@
 [project]
 name = "reasonloop"
-version = "0.2.0"
+version = "0.2.1"
 description = "A modular AI agent system with task orchestration and web crawling capabilities"
 authors = [
     {name = "Tanguy SALMON", email = "tanguy.salmon@gmail.com"}
@@ -38,7 +38,19 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "reasonloop"
-packages = [{include = "abilities"}, {include = "core"}, {include = "utils"}]
+packages = [
+    {include = "reasonloop"},
+    {include = "abilities"},
+    {include = "core"},
+    {include = "utils"},
+    {include = "config"},
+    {include = "models"},
+    {include = "api"},
+    {include = "agents"},
+]
+
+# Include agent templates as package data
+include = ["agents/*.md"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

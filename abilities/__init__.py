@@ -1,4 +1,4 @@
-from abilities.ability_registry import register_ability
+from abilities.ability_registry import execute_ability, list_abilities, register_ability
 from abilities.email_design_agent import email_design_ability
 from abilities.file_abilities import write_file_ability
 from abilities.mysql_query import mysql_query_ability
