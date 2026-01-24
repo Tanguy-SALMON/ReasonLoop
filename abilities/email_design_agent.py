@@ -17,6 +17,7 @@ Each agent has a distinct "persona" that influences design choices:
 import asyncio
 import json
 import logging
+import os
 import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -612,6 +613,7 @@ def email_design_ability(
     campaign_goal: str = "Promote new arrivals and drive sales",
     num_designs: int = 3,
     parallel: bool = True,
+    output_dir: Optional[str] = None,
 ) -> str:
     """
     ReasonLoop ability wrapper for email design generation.
@@ -621,6 +623,7 @@ def email_design_ability(
         campaign_goal: What the campaign should achieve
         num_designs: Number of design variations to generate (default: 3)
         parallel: Run agents concurrently (default: True)
+        output_dir: Directory to save HTML files (auto-detected from brand data if not provided)
 
     Returns:
         JSON string with all designs and metadata
@@ -636,6 +639,13 @@ def email_design_ability(
         else:
             brand_data = brand_intelligence_json
 
+        # Try to find output session from brand data (web crawler output)
+        if not output_dir:
+            output_dir = brand_data.get("output_session")
+            if output_dir:
+                output_dir = os.path.join(output_dir, "emails")
+                logger.info(f"Using output session emails folder: {output_dir}")
+
         # Create orchestrator and generate designs
         orchestrator = DesignOrchestrator(num_designs=num_designs)
         designs = orchestrator.generate_designs(
@@ -644,16 +654,40 @@ def email_design_ability(
             parallel=parallel,
         )
 
+        # Save HTML files if output directory is available
+        saved_files = []
+        if output_dir and designs:
+            saved_files = save_designs_to_html(designs, output_dir)
+            logger.info(f"Saved {len(saved_files)} email templates to {output_dir}")
+
+            # Update summary.md with email count
+            try:
+                from utils.output_manager import OutputManager
+
+                # Get session dir (parent of emails/)
+                session_dir = os.path.dirname(output_dir)
+                session_name = os.path.basename(session_dir)
+                parts = session_name.rsplit("_", 2)
+                if len(parts) >= 3:
+                    domain = "_".join(parts[:-2])
+                    timestamp = f"{parts[-2]}_{parts[-1]}"
+                    output_manager = OutputManager(domain, timestamp)
+                    output_manager.update_email_count(len(saved_files))
+            except Exception as e:
+                logger.warning(f"Could not update summary email count: {e}")
+
         # Format response
         response = {
             "success": True,
             "num_designs": len(designs),
             "campaign_goal": campaign_goal,
             "designs": [design.to_dict() for design in designs],
+            "saved_files": saved_files,
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "personas_used": [d.persona for d in designs],
                 "parallel_execution": parallel,
+                "output_dir": output_dir,
             },
         }
 
@@ -712,13 +746,12 @@ def save_designs_to_html(
     Returns:
         List of file paths
     """
-    import os
-
     os.makedirs(output_dir, exist_ok=True)
 
     paths = []
     for design in designs:
-        filename = f"{design.design_id}.html"
+        # Use persona for cleaner filename (e.g., minimalist.html, bold.html)
+        filename = f"{design.persona}.html"
         filepath = os.path.join(output_dir, filename)
 
         with open(filepath, "w", encoding="utf-8") as f:
