@@ -9,6 +9,10 @@ A modular AI agent system with comprehensive metrics tracking, multi-provider LL
 
 - **🤖 Multi-Agent Orchestration**: Intelligent task breakdown and execution
 - **📊 Real-Time Metrics**: Actual token usage, costs, and performance tracking
+- **🌐 Deep Web Scraping**: Playwright-based crawler with JavaScript rendering
+- **🎨 Website Intelligence**: Extract brand identity, products, design systems
+- **📧 Email Campaign Generation**: Automated branded email creation from website analysis
+- **📸 Screenshot Capture**: Full-page screenshots with design metrics extraction
 
 
 
@@ -43,14 +47,20 @@ python main.py --objective "Create a technical specification for a REST API"
 ### Advanced Usage
 
 ```bash
-# Use specific template
-python main.py --template default_tasks --objective "Analyze competitor pricing strategies"
+# Use specific agent
+python main.py --template email_campaign_generator --objective "Generate emails for https://example.com"
+
+# Website intelligence and email campaign generation
+python main.py --template email_campaign_generator --objective "Generate branded emails for https://yoursite.com" --verbose
+
+# Deep website scraping with screenshots
+python main.py --objective "Crawl https://example.com with screenshots, max_pages=5, save to output/example.com/screenshots/"
+
+# Website intelligence extraction
+python main.py --objective "Analyze https://example.com for brand identity, products, and customer insights"
 
 # Verbose logging for debugging
 python main.py --objective "Create a business plan" --verbose
-
-# Custom model selection
-python main.py --objective "Debug this Python code" --model gpt-4-turbo
 ```
 
 ## 🏗️ Architecture
@@ -85,21 +95,30 @@ register_ability("my-custom", my_custom_ability)
 python main.py --objective "Use my custom ability to process this data"
 ```
 
-### Creating Templates
+### Creating Agent Definitions
 
-1. Add JSON template to `templates/`:
-```json
-{
-  "name": "my_template",
-  "description": "My custom template",
-  "system_message": "You are a specialized agent...",
-  "task_prompt": "Given this objective: {objective}..."
-}
+1. Add agent definition to `agents/`:
+```markdown
+---
+name: my_custom_agent
+description: My custom agent description
+author: ReasonLoop
+version: 1.0
+abilities:
+  - text-completion
+  - web-search
+tags:
+  - custom
+---
+
+You are a specialized agent...
+
+Your objective: {objective}
 ```
 
 2. Use with `--template` flag:
 ```bash
-python main.py --template my_template --objective "Your objective here"
+python main.py --template my_custom_agent --objective "Your objective here"
 ```
 
 

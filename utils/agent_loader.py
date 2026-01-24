@@ -1,22 +1,27 @@
 """
-Prompt template management system
+Agent definition loader and management system
+Loads agent definitions from the agents/ directory
 """
+
 import logging
 import os
 import re
+from typing import Any, Dict, Optional
+
 import yaml
-from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Dictionary of available prompt templates
+# Dictionary of available agent definitions
 PROMPT_TEMPLATES = {}
-def load_templates_from_directory(directory_path: str = "templates") -> None:
-    """Load all template files from the specified directory"""
-    logger.info(f"Loading templates from {directory_path}")
+
+
+def load_templates_from_directory(directory_path: str = "agents") -> None:
+    """Load all agent definition files from the specified directory"""
+    logger.info(f"Loading agent definitions from {directory_path}")
 
     if not os.path.exists(directory_path):
-        logger.warning(f"Template directory {directory_path} not found")
+        logger.warning(f"Agent directory {directory_path} not found")
         return
 
     for filename in os.listdir(directory_path):
@@ -26,23 +31,25 @@ def load_templates_from_directory(directory_path: str = "templates") -> None:
                 template_name = os.path.splitext(filename)[0]
                 print(template_name)
 
-                with open(file_path, 'r', encoding='utf-8') as file:
+                with open(file_path, "r", encoding="utf-8") as file:
                     content = file.read()
 
                 # Extract YAML frontmatter if present
                 frontmatter = {}
-                if content.startswith('---'):
-                    parts = content.split('---', 2)
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
                     if len(parts) >= 3:
                         try:
                             frontmatter = yaml.safe_load(parts[1])
                             content = parts[2].strip()
                         except Exception as e:
-                            logger.warning(f"Error parsing frontmatter in {filename}: {e}")
+                            logger.warning(
+                                f"Error parsing frontmatter in {filename}: {e}"
+                            )
 
                 # Use the 'name' from frontmatter if available
-                if frontmatter and 'name' in frontmatter:
-                    template_name = frontmatter['name']
+                if frontmatter and "name" in frontmatter:
+                    template_name = frontmatter["name"]
 
                 # Add to templates dictionary
                 PROMPT_TEMPLATES[template_name] = content
@@ -50,7 +57,7 @@ def load_templates_from_directory(directory_path: str = "templates") -> None:
 
             except Exception as e:
                 logger.error(f"Error loading template {filename}: {e}")
-    
+
 
 def get_prompt_template(template_name: str, **kwargs: Any) -> str:
     """Get a prompt template and format it with the provided kwargs"""
@@ -68,7 +75,7 @@ def get_prompt_template(template_name: str, **kwargs: Any) -> str:
 
     # Create a dictionary with all the keys in lowercase
     lowercase_kwargs = {k.lower(): v for k, v in kwargs.items()}
-   
+
     try:
         # Replace placeholders manually to avoid issues with JSON braces
         result = template
@@ -78,16 +85,19 @@ def get_prompt_template(template_name: str, **kwargs: Any) -> str:
                 result = result.replace(placeholder, str(value))
             else:
                 logger.warning(f"Placeholder '{placeholder}' not found in template")
-                 
+
         # Check if any placeholders remain - with improved regex
-        remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', result)
+        remaining_placeholders = re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", result)
         if remaining_placeholders:
-            logger.warning(f"Unreplaced placeholders in template: {remaining_placeholders}")
+            logger.warning(
+                f"Unreplaced placeholders in template: {remaining_placeholders}"
+            )
 
         return result.strip()
     except Exception as e:
         logger.error(f"Error formatting template: {e}")
         return template.strip()  # Return unformatted as fallback
+
 
 def add_prompt_template(name: str, template: str) -> None:
     """Add a new prompt template"""

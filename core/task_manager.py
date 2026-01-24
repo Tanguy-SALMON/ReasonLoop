@@ -4,12 +4,13 @@ Task manager for creating, validating, and executing tasks
 
 import logging
 from typing import List, Optional
-from models.task import Task
-from models.result import Result
+
 from abilities.ability_registry import execute_ability
 from config.settings import get_setting
+from models.result import Result
+from models.task import Task
+from utils.agent_loader import get_prompt_template
 from utils.json_parser import extract_json_from_text
-from utils.prompt_templates import get_prompt_template
 from utils.prompt_logger import log_prompt
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,9 @@ class TaskManager:
     def execute_task(self, task: Task) -> Result:
         """Execute a task and return the result"""
         # Get task description
-        task_desc = getattr(task, "description", getattr(task, "task", f"Task #{task.id}"))
+        task_desc = getattr(
+            task, "description", getattr(task, "task", f"Task #{task.id}")
+        )
         logger.info(f"Executing task #{task.id}: {task_desc}")
 
         # Prepare context from dependencies
@@ -84,7 +87,9 @@ class TaskManager:
         for dep_id in task.dependent_task_ids:
             dep_task = self.get_task_by_id(dep_id)
             if dep_task and dep_task.output:
-                context += f"\n\nOutput from task #{dep_id}:\n{dep_task.output[:500]}..."
+                context += (
+                    f"\n\nOutput from task #{dep_id}:\n{dep_task.output[:500]}..."
+                )
 
         # Build prompt
         task_prompt = f"Complete this task: {task_desc}\nObjective: {self.objective}"
@@ -94,7 +99,9 @@ class TaskManager:
         # Execute ability
         if task.ability == "text-completion":
             role = self._determine_role(task_desc)
-            output = execute_ability(task.ability, task_prompt, task_id=task.id, role=role)
+            output = execute_ability(
+                task.ability, task_prompt, task_id=task.id, role=role
+            )
         else:
             output = execute_ability(task.ability, task_desc, task_id=task.id)
 
@@ -126,7 +133,9 @@ class TaskManager:
             return "planner"
         elif any(k in task_lower for k in ["review", "analyze", "evaluate", "check"]):
             return "reviewer"
-        elif any(k in task_lower for k in ["execute", "implement", "generate", "write"]):
+        elif any(
+            k in task_lower for k in ["execute", "implement", "generate", "write"]
+        ):
             return "executor"
         else:
             return "orchestrator"

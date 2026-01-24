@@ -2,21 +2,23 @@
 File operation abilities for saving agent definitions
 """
 
-import os
 import logging
+import os
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
-def write_file_ability(content: str, filename: str = None, directory: str = "templates/created") -> str:
+def write_file_ability(
+    content: str, filename: str = None, directory: str = "agents/created"
+) -> str:
     """
     Write content to a file in the specified directory
 
     Args:
         content: The content to write to the file
         filename: Optional filename (if None, will generate based on content)
-        directory: Directory to save the file (default: templates/created)
+        directory: Directory to save the file (default: agents/created)
 
     Returns:
         Path to the created file
@@ -48,7 +50,7 @@ def write_file_ability(content: str, filename: str = None, directory: str = "tem
 
     # Write file
     filepath = os.path.join(directory, filename)
-    with open(filepath, 'w') as f:
+    with open(filepath, "w") as f:
         f.write(content)
 
     logger.info(f"File written: {filepath}")
@@ -58,4 +60,5 @@ def write_file_ability(content: str, filename: str = None, directory: str = "tem
 # Register the ability
 if __name__ != "__main__":
     from abilities.ability_registry import register_ability
+
     register_ability("write-file", write_file_ability)
