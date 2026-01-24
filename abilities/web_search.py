@@ -3,18 +3,21 @@ Web search ability using DuckDuckGo Instant Answer API
 """
 
 import logging
+
 import requests
+
 from config.settings import get_setting
 
 logger = logging.getLogger(__name__)
 
 
-def web_search_ability(query: str) -> str:
+def web_search_ability(query: str, **kwargs) -> str:
     """
     Search the web for information using DuckDuckGo Instant Answer API
 
     Args:
         query: Search query string
+        **kwargs: Additional arguments (ignored, for compatibility)
 
     Returns:
         Formatted search results as string
@@ -26,12 +29,7 @@ def web_search_ability(query: str) -> str:
 
     # Call DuckDuckGo API
     url = "https://api.duckduckgo.com/"
-    params = {
-        "q": query,
-        "format": "json",
-        "no_html": 1,
-        "skip_disambig": 1
-    }
+    params = {"q": query, "format": "json", "no_html": 1, "skip_disambig": 1}
 
     response = requests.get(url, params=params, timeout=10)
     response.raise_for_status()
@@ -78,4 +76,5 @@ def web_search_ability(query: str) -> str:
 # Register this ability
 if __name__ != "__main__":
     from abilities.ability_registry import register_ability
+
     register_ability("web-search", web_search_ability)

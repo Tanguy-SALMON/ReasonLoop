@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
-def web_scrape_ability(url: str) -> str:
+def web_scrape_ability(url: str, **kwargs) -> str:
     """Extract content from a specific URL"""
     logger.info(f"Web scrape: {url}")
 

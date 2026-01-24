@@ -687,6 +687,7 @@ def web_crawler_ability(
     url: str,
     max_pages: int = 10,
     max_depth: int = 2,
+    **kwargs,
 ) -> str:
     """
     Crawl a website deeply using Playwright for JavaScript rendering.
@@ -738,6 +739,7 @@ def web_crawler_with_screenshots_ability(
     max_pages: int = 5,
     max_depth: int = 1,
     screenshot_dir: str = "output/screenshots",
+    **kwargs,
 ) -> str:
     """
     Crawl a website with full-page screenshots and design analysis.

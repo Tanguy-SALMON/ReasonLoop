@@ -255,7 +255,7 @@ Return ONLY the JSON, no explanation."""
         return {"error": str(e)}
 
 
-def visual_design_analyzer_ability(url: str) -> str:
+def visual_design_analyzer_ability(url: str, **kwargs) -> str:
     """
     Screenshot a website and analyze its design using Vision AI.
     Saves both screenshot and analysis JSON to output/{domain}/.

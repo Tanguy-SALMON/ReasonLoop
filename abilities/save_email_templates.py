@@ -119,6 +119,7 @@ def save_email_templates_ability(
     content: str,
     domain: str = None,
     output_dir: str = None,
+    **kwargs,
 ) -> str:
     """
     Extract HTML email templates from content and save them to the emails folder.

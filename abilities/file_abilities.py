@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def write_file_ability(
-    content: str, filename: str = None, directory: str = "agents/created"
+    content: str, filename: str = None, directory: str = "agents/created", **kwargs
 ) -> str:
     """
     Write content to a file in the specified directory
