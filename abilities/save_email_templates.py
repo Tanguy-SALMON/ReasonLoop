@@ -135,20 +135,39 @@ def save_email_templates_ability(
     import json
 
     logger.info(f"Extracting email templates for domain: {domain}")
+    logger.debug(f"kwargs received: {kwargs}")
 
-    # Determine output directory
+    # Determine output directory - ALWAYS prioritize explicit domain parameter
     if output_dir:
         emails_dir = output_dir
-    elif domain:
+        logger.info(f"Using explicit output_dir: {output_dir}")
+    elif domain and domain.strip():
+        # Use passed domain (from task manager context)
         emails_dir = os.path.join("output", domain, "emails")
+        logger.info(f"Using passed domain: {domain}")
     else:
-        # Try to extract domain from content
-        url_match = re.search(r"https?://([^/\s]+)", content)
-        if url_match:
-            domain = url_match.group(1)
+        # Last resort: try to extract domain from content (avoid placeholder URLs)
+        # Look for real domain URLs, not placeholder services
+        placeholder_domains = [
+            "via.placeholder.com",
+            "placeholder.com",
+            "placehold.it",
+            "dummyimage.com",
+        ]
+        url_matches = re.findall(r"https?://([^/\s\"']+)", content)
+
+        domain = None
+        for match in url_matches:
+            if not any(ph in match.lower() for ph in placeholder_domains):
+                domain = match
+                logger.info(f"Extracted domain from content: {domain}")
+                break
+
+        if domain:
             emails_dir = os.path.join("output", domain, "emails")
         else:
             emails_dir = os.path.join("output", "unknown", "emails")
+            logger.warning("No domain found, using 'unknown' folder")
 
     # Create directory
     os.makedirs(emails_dir, exist_ok=True)

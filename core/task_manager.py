@@ -208,6 +208,7 @@ class TaskManager:
 
         # All other abilities: pass dependency output (or task description) plus domain
         content = context["dependency_output"] or context["task_description"]
+        logger.debug(f"Executing {ability} with domain: {context['domain']}")
         return execute_ability(
             ability,
             content,
