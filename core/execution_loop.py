@@ -53,15 +53,13 @@ def _update_crawler_summary(task_manager: TaskManager, execution_time: float) ->
     for session_dir in crawler_sessions:
         try:
             # Create OutputManager from existing session dir
-            # Extract domain and timestamp from session_dir format: output/domain_timestamp
+            # Extract domain and timestamp from session_dir format: output/domain_YYYYMMDD
             session_name = os.path.basename(session_dir)
-            parts = session_name.rsplit(
-                "_", 2
-            )  # Split from right: domain_YYYYMMDD_HHMMSS
+            parts = session_name.rsplit("_", 1)  # Split from right: domain_YYYYMMDD
 
-            if len(parts) >= 3:
-                domain = "_".join(parts[:-2])
-                timestamp = f"{parts[-2]}_{parts[-1]}"
+            if len(parts) >= 2:
+                domain = parts[0]
+                timestamp = parts[1]
             else:
                 # Fallback: use entire name as domain
                 domain = session_name
@@ -112,11 +110,11 @@ def run_execution_loop(objective: str) -> str:
     while True:
         cycle_count += 1
         progress_bar = "█" * completed_tasks + "░" * (total_tasks - completed_tasks)
-        print(f"\n{Fore.CYAN}{'═' * 80}{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}{'═' * 80}{Style.RESET_ALL}")
         print(
-            f"{Fore.GREEN}Progress: [{progress_bar}] {completed_tasks}/{total_tasks}{Style.RESET_ALL}"
+            f"{Fore.YELLOW}Progress: [{progress_bar}] {completed_tasks}/{total_tasks}{Style.RESET_ALL}"
         )
-        print(f"{Fore.CYAN}{'═' * 80}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{'═' * 80}{Style.RESET_ALL}")
 
         next_task = task_manager.find_next_task()
         if not next_task:
@@ -170,7 +168,68 @@ def run_execution_loop(objective: str) -> str:
     with open(filename, "w") as f:
         f.write(markdown_content)
 
-    logger.info(f"Results saved to {filename}")
-    logger.info(summary)
+    # Pretty print the summary to terminal
+    _print_session_summary(
+        filename, objective, execution_time, completed_tasks, total_tasks, summary
+    )
 
     return filename
+
+
+def _print_session_summary(
+    filename: str,
+    objective: str,
+    execution_time: float,
+    completed_tasks: int,
+    total_tasks: int,
+    summary: str,
+) -> None:
+    """Print a nicely formatted session summary to terminal."""
+    try:
+        from colorama import Fore, Style
+    except ImportError:
+
+        class Fore:
+            YELLOW = GREEN = WHITE = CYAN = ""
+
+        class Style:
+            BRIGHT = RESET_ALL = ""
+
+    # Header
+    print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}{Style.BRIGHT}SESSION COMPLETE{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
+
+    # Stats
+    print(
+        f"{Fore.WHITE}Objective:{Style.RESET_ALL} {objective[:70]}{'...' if len(objective) > 70 else ''}"
+    )
+    print(f"{Fore.WHITE}Duration:{Style.RESET_ALL}  {execution_time:.1f}s")
+    print(
+        f"{Fore.WHITE}Tasks:{Style.RESET_ALL}     {Fore.GREEN}{completed_tasks}/{total_tasks} completed{Style.RESET_ALL}"
+    )
+    print(
+        f"{Fore.WHITE}Saved to:{Style.RESET_ALL}  {Fore.CYAN}{filename}{Style.RESET_ALL}"
+    )
+
+    # Summary preview (first 500 chars, cleaned up)
+    if summary:
+        print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}SUMMARY PREVIEW{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
+
+        # Clean and truncate summary
+        preview = summary.strip()
+        if len(preview) > 800:
+            preview = preview[:800] + "..."
+
+        # Print with subtle coloring
+        for line in preview.split("\n"):
+            if line.startswith("#"):
+                print(f"{Fore.YELLOW}{Style.BRIGHT}{line}{Style.RESET_ALL}")
+            elif line.startswith("**") or line.startswith("- **"):
+                print(f"{Fore.WHITE}{line}{Style.RESET_ALL}")
+            else:
+                print(line)
+
+    print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")

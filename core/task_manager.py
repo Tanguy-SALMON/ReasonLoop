@@ -108,7 +108,7 @@ class TaskManager:
         display_desc = task_desc if len(task_desc) <= 100 else task_desc[:97] + "..."
 
         print(
-            f"\n{Fore.CYAN}▶ Executing Task #{task.id}{Style.RESET_ALL} [{Fore.BLUE}{task.ability}{Style.RESET_ALL}]"
+            f"\n{Fore.YELLOW}▶ Executing Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
         )
         print(f"  {display_desc}\n")
 
@@ -171,21 +171,18 @@ class TaskManager:
             class Style:
                 BRIGHT = RESET_ALL = ""
 
-        print(f"\n{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
+        print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
 
         for task in self.tasks:
             # Status indicator
             if task.status.value == "complete":
                 status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
-                status_color = Fore.GREEN
             elif task.status.value == "incomplete":
                 status_icon = f"{Fore.YELLOW}○{Style.RESET_ALL}"
-                status_color = Fore.YELLOW
             else:
                 status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
-                status_color = Fore.RED
 
             # Task description
             display_desc = task._additional_attributes.get("insight", task.description)
@@ -196,7 +193,7 @@ class TaskManager:
 
             # Print task header
             print(
-                f"{status_icon} {Fore.CYAN}Task #{task.id}{Style.RESET_ALL} [{Fore.BLUE}{task.ability}{Style.RESET_ALL}]"
+                f"{status_icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
             )
             print(f"  {display_desc}")
 

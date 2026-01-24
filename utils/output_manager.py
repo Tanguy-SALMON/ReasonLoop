@@ -18,12 +18,12 @@ class OutputManager:
 
     Structure:
     output/
-      ├── domain.com_20260124_143022/
+      ├── domain.com_20260124/      # Date-only, multiple runs same day share folder
       │   ├── screenshots/
       │   ├── emails/
-      │   ├── design_system.json
+      │   ├── data/
       │   └── summary.md
-      └── domain.com_20260124_150133/
+      └── domain.com_20260125/
           └── ...
     """
 
@@ -36,13 +36,14 @@ class OutputManager:
         Args:
             domain: Clean domain identifier (e.g., "shiseido.com-us-en")
             base_dir: Base output directory (default: "output")
-            timestamp: Optional timestamp (auto-generated if not provided)
+            timestamp: Optional date string YYYYMMDD (auto-generated if not provided)
         """
         self.domain = domain
         self.base_dir = base_dir
-        self.timestamp = timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Use date-only format so multiple runs on same day share the folder
+        self.timestamp = timestamp or datetime.now().strftime("%Y%m%d")
 
-        # Create session folder: output/domain_YYYYMMDD_HHMMSS/
+        # Create session folder: output/domain_YYYYMMDD/
         self.session_dir = os.path.join(base_dir, f"{domain}_{self.timestamp}")
 
         # Subdirectories

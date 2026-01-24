@@ -667,11 +667,11 @@ def email_design_ability(
                 # Get session dir (parent of emails/)
                 session_dir = os.path.dirname(output_dir)
                 session_name = os.path.basename(session_dir)
-                parts = session_name.rsplit("_", 2)
-                if len(parts) >= 3:
-                    domain = "_".join(parts[:-2])
-                    timestamp = f"{parts[-2]}_{parts[-1]}"
-                    output_manager = OutputManager(domain, timestamp)
+                parts = session_name.rsplit("_", 1)  # Split: domain_YYYYMMDD
+                if len(parts) >= 2:
+                    domain = parts[0]
+                    timestamp = parts[1]
+                    output_manager = OutputManager(domain, timestamp=timestamp)
                     output_manager.update_email_count(len(saved_files))
             except Exception as e:
                 logger.warning(f"Could not update summary email count: {e}")
