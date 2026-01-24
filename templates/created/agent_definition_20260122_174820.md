@@ -1,0 +1,1 @@
+Use write-file to save: 3 HTML email files (minimalist.html, bold.html, elegant.html with integrated content from tasks 4-5) to output/email_designs/, Design system JSON to output/email_designs/design_system.json, Summary report (report.md or report.json) with all file paths and brief descriptions. Return the file paths in the output.

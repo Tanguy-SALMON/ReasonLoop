@@ -1,22 +1,45 @@
 [project]
-name = "ll"
-version = "0.1.0"
-description = ""
+name = "reasonloop"
+version = "0.2.0"
+description = "A modular AI agent system with task orchestration and web crawling capabilities"
 authors = [
-    {name = "Tanguy SALMON",email = "tanguy.salmon@gmail.com"}
+    {name = "Tanguy SALMON", email = "tanguy.salmon@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
-    "requests (>=2.32.5,<3.0.0)",
-    "bs4 (>=0.0.2,<0.0.3)",
-    "pandas (>=2.3.3,<3.0.0)",
-    "pyyaml (>=6.0.3,<7.0.0)",
-    "psutil (>=7.1.2,<8.0.0)",
-    "python-dotenv (>=1.0.0,<2.0.0)",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "pandas>=2.0.0",
+    "pyyaml>=6.0",
+    "psutil>=5.9.0",
+    "python-dotenv>=1.0.0",
+    "python-dateutil>=2.8.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "python-multipart>=0.0.6",
+    "playwright>=1.40.0",
+    "nest-asyncio>=1.6.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+reasonloop = "main:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "reasonloop"
+packages = [{include = "abilities"}, {include = "core"}, {include = "utils"}]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

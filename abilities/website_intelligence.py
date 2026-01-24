@@ -773,8 +773,353 @@ def _generate_campaign_recommendations(intelligence: Dict[str, Any]) -> Dict[str
     return recommendations
 
 
+def deep_website_intelligence_ability(
+    url: str,
+    max_pages: int = 10,
+    max_depth: int = 2,
+) -> str:
+    """
+    Extract comprehensive website intelligence using Playwright for JS rendering.
+
+    This is an enhanced version that:
+    - Uses headless Chromium to render JavaScript
+    - Crawls multiple pages (homepage, products, about, etc.)
+    - Extracts real product data with images
+    - Gets fully rendered content
+
+    Args:
+        url: Target website URL
+        max_pages: Maximum pages to crawl (default: 10)
+        max_depth: Maximum link depth (default: 2)
+
+    Returns:
+        JSON string with comprehensive website intelligence including crawled data
+    """
+    from datetime import datetime
+
+    logger.info(f"Starting DEEP website intelligence extraction for: {url}")
+
+    # Clean URL
+    url = url.strip()
+    if not url.startswith("http"):
+        url_match = re.search(r"https?://[^\s]+", url)
+        if url_match:
+            url = url_match.group(0)
+        else:
+            url = f"https://{url}"
+
+    try:
+        # Import and use the Playwright crawler
+        from abilities.web_crawler import web_crawler_ability
+
+        logger.info(f"Crawling {url} with Playwright (max {max_pages} pages)...")
+        crawl_result_json = web_crawler_ability(
+            url, max_pages=max_pages, max_depth=max_depth
+        )
+        crawl_result = json.loads(crawl_result_json)
+
+        if crawl_result.get("error"):
+            logger.warning(
+                f"Crawler error: {crawl_result['error']}, falling back to basic extraction"
+            )
+            return website_intelligence_ability(url)
+
+        # Build enhanced intelligence from crawl data
+        intelligence = {
+            "website_url": url,
+            "analysis_date": datetime.now().isoformat(),
+            "crawl_stats": {
+                "pages_crawled": crawl_result.get("pages_crawled", 0),
+                "crawl_time": crawl_result.get("crawl_time", 0),
+                "total_products_found": len(crawl_result.get("all_products", [])),
+                "total_images_found": len(crawl_result.get("all_images", [])),
+            },
+        }
+
+        # Extract brand identity from homepage
+        homepage = (
+            crawl_result.get("pages", [{}])[0] if crawl_result.get("pages") else {}
+        )
+
+        intelligence["brand_identity"] = {
+            "name": homepage.get("title", "").split("|")[0].split("-")[0].strip(),
+            "tagline": homepage.get("metadata", {}).get("og:description", "")[:100],
+            "logo_url": "",
+            "colors": [],
+            "fonts": [],
+            "favicon_url": "",
+            "mission_statement": "",
+        }
+
+        # Find logo from images
+        for img in crawl_result.get("all_images", []):
+            if (
+                "logo" in img.get("alt", "").lower()
+                or "logo" in img.get("src", "").lower()
+            ):
+                intelligence["brand_identity"]["logo_url"] = img.get("src", "")
+                break
+
+        # Extract SEO from homepage metadata
+        meta = homepage.get("metadata", {})
+        intelligence["seo"] = {
+            "title": homepage.get("title", ""),
+            "meta_description": meta.get("description", meta.get("og:description", "")),
+            "primary_keywords": [],
+            "og_image": meta.get("og:image", ""),
+        }
+
+        # Real products from crawler
+        intelligence["products"] = {
+            "categories": list(
+                set(
+                    [
+                        p.get("category", "Uncategorized")
+                        for p in crawl_result.get("all_products", [])
+                        if p.get("category")
+                    ]
+                )
+            )[:10],
+            "featured_items": [
+                {
+                    "name": p.get("name", ""),
+                    "price": p.get("price"),
+                    "currency": p.get("currency", ""),
+                    "image": p.get("image", ""),
+                    "url": p.get("url", ""),
+                }
+                for p in crawl_result.get("all_products", [])[:10]
+            ],
+            "price_range": _calculate_price_range(crawl_result.get("all_products", [])),
+            "pricing_tier": "unknown",
+            "total_products": len(crawl_result.get("all_products", [])),
+        }
+
+        # Determine pricing tier
+        if intelligence["products"]["price_range"]["max"] > 0:
+            avg = (
+                intelligence["products"]["price_range"]["min"]
+                + intelligence["products"]["price_range"]["max"]
+            ) / 2
+            if avg < 50:
+                intelligence["products"]["pricing_tier"] = "budget"
+            elif avg < 200:
+                intelligence["products"]["pricing_tier"] = "mid-range"
+            else:
+                intelligence["products"]["pricing_tier"] = "premium"
+
+        # All images for email design
+        intelligence["images"] = {
+            "hero_candidates": [
+                img
+                for img in crawl_result.get("all_images", [])
+                if img.get("width", 0) > 600 or "hero" in img.get("context", "").lower()
+            ][:5],
+            "product_images": [
+                img
+                for img in crawl_result.get("all_images", [])
+                if img.get("context")
+                and any(
+                    kw in img.get("context", "").lower()
+                    for kw in ["product", "item", "shop", "buy"]
+                )
+            ][:20],
+            "all_images": crawl_result.get("all_images", [])[:50],
+        }
+
+        # Site structure for navigation
+        intelligence["site_structure"] = crawl_result.get("site_structure", {})
+
+        # Analyze brand voice from content
+        all_content = " ".join(
+            [p.get("content", "")[:500] for p in crawl_result.get("pages", [])]
+        )
+        intelligence["brand_voice"] = _analyze_brand_voice(all_content)
+
+        # Value propositions (scan content for common patterns)
+        intelligence["value_propositions"] = _extract_value_props(all_content)
+
+        # Promotions from content
+        intelligence["promotions"] = _extract_promotions(all_content)
+
+        # Technical info
+        intelligence["technical"] = {
+            "platform": _detect_platform(homepage.get("content", "")),
+            "currency": _detect_currency(all_content),
+            "has_blog": any(
+                "/blog" in p.get("url", "") for p in crawl_result.get("pages", [])
+            ),
+        }
+
+        # Generate recommendations
+        intelligence["email_campaign_recommendations"] = (
+            _generate_campaign_recommendations(intelligence)
+        )
+
+        # Add raw crawl data for reference
+        intelligence["_crawl_data"] = {
+            "pages_summary": [
+                {"url": p.get("url"), "title": p.get("title")}
+                for p in crawl_result.get("pages", [])
+            ],
+        }
+
+        logger.info(
+            f"Deep website intelligence completed: {intelligence['crawl_stats']}"
+        )
+        return json.dumps(intelligence, indent=2)
+
+    except Exception as e:
+        logger.error(f"Deep website intelligence failed: {e}", exc_info=True)
+        # Fall back to basic extraction
+        logger.info("Falling back to basic website intelligence extraction")
+        return website_intelligence_ability(url)
+
+
+def _calculate_price_range(products: List[Dict]) -> Dict[str, float]:
+    """Calculate min/max price from products"""
+    prices = []
+    for p in products:
+        price = p.get("price")
+        if price:
+            try:
+                # Handle string prices like "$99.00" or "99.00"
+                if isinstance(price, str):
+                    price = float(re.sub(r"[^\d.]", "", price))
+                prices.append(float(price))
+            except (ValueError, TypeError):
+                pass
+
+    if prices:
+        return {"min": min(prices), "max": max(prices)}
+    return {"min": 0, "max": 0}
+
+
+def _analyze_brand_voice(content: str) -> Dict[str, Any]:
+    """Analyze brand voice from content"""
+    content_lower = content.lower()
+
+    tone = []
+    if any(
+        word in content_lower for word in ["luxury", "premium", "exclusive", "elegant"]
+    ):
+        tone.append("luxury")
+    if any(word in content_lower for word in ["fun", "playful", "enjoy", "love"]):
+        tone.append("playful")
+    if any(
+        word in content_lower for word in ["professional", "enterprise", "business"]
+    ):
+        tone.append("professional")
+    if any(word in content_lower for word in ["simple", "easy", "quick", "fast"]):
+        tone.append("accessible")
+    if any(
+        word in content_lower for word in ["sustainable", "eco", "organic", "natural"]
+    ):
+        tone.append("eco-conscious")
+
+    # Check for emojis
+    emoji_pattern = re.compile(
+        "[\U0001f600-\U0001f64f\U0001f300-\U0001f5ff\U0001f680-\U0001f6ff]"
+    )
+    has_emojis = bool(emoji_pattern.search(content))
+
+    return {
+        "tone": tone if tone else ["neutral"],
+        "characteristics": f"{'Emoji-friendly' if has_emojis else 'Professional'}, {', '.join(tone) if tone else 'balanced'}",
+        "emoji_usage": has_emojis,
+        "cta_patterns": [],  # Would need more analysis
+    }
+
+
+def _extract_value_props(content: str) -> Dict[str, Any]:
+    """Extract value propositions from content"""
+    content_lower = content.lower()
+
+    usps = []
+    usp_patterns = {
+        "Free shipping": r"free\s+shipping",
+        "Money-back guarantee": r"money.?back|refund",
+        "Sustainable": r"sustainable|eco.?friendly|organic",
+        "Handmade": r"handmade|hand.?crafted|artisan",
+        "Premium quality": r"premium\s+quality|high.?quality",
+        "Fast delivery": r"fast\s+delivery|quick\s+shipping|express",
+        "Secure checkout": r"secure\s+checkout|ssl|encrypted",
+    }
+
+    for usp_name, pattern in usp_patterns.items():
+        if re.search(pattern, content_lower):
+            usps.append(usp_name)
+
+    return {
+        "primary_usp": usps[0] if usps else "",
+        "secondary_usps": usps[1:] if len(usps) > 1 else [],
+        "guarantees": [
+            u for u in usps if "guarantee" in u.lower() or "return" in u.lower()
+        ],
+    }
+
+
+def _extract_promotions(content: str) -> Dict[str, Any]:
+    """Extract promotional content"""
+    promotions = {
+        "current_offers": [],
+        "discount_types": [],
+        "first_timer_incentive": "",
+    }
+
+    # Find percentage discounts
+    percent_matches = re.findall(r"(\d+)%\s*off", content, re.I)
+    if percent_matches:
+        promotions["discount_types"].append("percentage_discount")
+        promotions["current_offers"].append(f"{percent_matches[0]}% off")
+
+    # Find free shipping
+    if re.search(r"free\s+shipping", content, re.I):
+        promotions["discount_types"].append("free_shipping")
+        promotions["current_offers"].append("Free shipping available")
+
+    # Find signup incentives
+    signup_match = re.search(r"sign\s*up.*?(\d+%?\s*off|free)", content, re.I)
+    if signup_match:
+        promotions["first_timer_incentive"] = signup_match.group(0)[:100]
+
+    return promotions
+
+
+def _detect_platform(content: str) -> str:
+    """Detect e-commerce platform"""
+    content_lower = content.lower()
+
+    if "shopify" in content_lower:
+        return "Shopify"
+    elif "woocommerce" in content_lower:
+        return "WooCommerce"
+    elif "magento" in content_lower:
+        return "Magento"
+    elif "bigcommerce" in content_lower:
+        return "BigCommerce"
+    return "Custom/Unknown"
+
+
+def _detect_currency(content: str) -> str:
+    """Detect currency from content"""
+    currency_patterns = {
+        "USD": r"\$\d",
+        "EUR": r"€\d",
+        "GBP": r"£\d",
+        "THB": r"฿\d|THB",
+        "JPY": r"¥\d",
+    }
+
+    for currency, pattern in currency_patterns.items():
+        if re.search(pattern, content):
+            return currency
+    return "USD"
+
+
 # Register ability
 if __name__ != "__main__":
     from abilities.ability_registry import register_ability
 
     register_ability("website-intelligence", website_intelligence_ability)
+    register_ability("deep-website-intelligence", deep_website_intelligence_ability)

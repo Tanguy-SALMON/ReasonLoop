@@ -5,17 +5,27 @@ from abilities.mysql_query import mysql_query_ability
 from abilities.mysql_schema import mysql_schema_ability
 from abilities.text_completion import text_completion_ability
 from abilities.visual_design_analyzer import visual_design_analyzer_ability
+from abilities.web_crawler import (
+    web_crawler_ability,
+    web_crawler_with_screenshots_ability,
+)
 from abilities.web_scrape import web_scrape_ability
 from abilities.web_search import web_search_ability
-from abilities.website_intelligence import website_intelligence_ability
+from abilities.website_intelligence import (
+    deep_website_intelligence_ability,
+    website_intelligence_ability,
+)
 
 # Register all abilities
 register_ability("text-completion", text_completion_ability)
 register_ability("web-search", web_search_ability)
 register_ability("web-scrape", web_scrape_ability)
+register_ability("web-crawl", web_crawler_ability)
+register_ability("web-crawl-screenshots", web_crawler_with_screenshots_ability)
 register_ability("write-file", write_file_ability)
 register_ability("mysql-schema", mysql_schema_ability)
 register_ability("mysql-query", mysql_query_ability)
 register_ability("website-intelligence", website_intelligence_ability)
+register_ability("deep-website-intelligence", deep_website_intelligence_ability)
 register_ability("email-design", email_design_ability)
 register_ability("visual-design-analyzer", visual_design_analyzer_ability)

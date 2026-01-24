@@ -1,0 +1,1 @@
+Use write-file to save all outputs to output/th.cos.com/: 3 HTML emails at emails/minimalist.html, emails/bold.html, emails/elegant.html (combine HTML from task 3 + content from task 4); design_system.json (from task 2); report.md summarizing the design system, email designs created, brand voice analysis, and file paths. Return all file paths created.
