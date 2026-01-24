@@ -1,6 +1,7 @@
 from abilities.ability_registry import execute_ability, list_abilities, register_ability
 from abilities.email_design_agent import email_design_ability
 from abilities.file_abilities import write_file_ability
+from abilities.image_generation import image_generation_ability
 from abilities.mysql_query import mysql_query_ability
 from abilities.mysql_schema import mysql_schema_ability
 from abilities.save_email_templates import save_email_templates_ability
@@ -31,3 +32,4 @@ register_ability("deep-website-intelligence", deep_website_intelligence_ability)
 register_ability("email-design", email_design_ability)
 register_ability("visual-design-analyzer", visual_design_analyzer_ability)
 register_ability("save-email-templates", save_email_templates_ability)
+register_ability("image-generation", image_generation_ability)

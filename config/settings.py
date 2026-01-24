@@ -73,7 +73,9 @@ class Settings:
         # Creative team roles
         self._load_env_var("XAI_MODEL_COPYWRITER")
         self._load_env_var("XAI_MODEL_ART_DIRECTOR")
+        self._load_env_var("XAI_MODEL_VISUAL_DESIGNER")
         self._load_env_var("XAI_MODEL_DEVELOPER")
+        self._load_env_var("XAI_IMAGE_API_URL")
 
         # Z.ai SDK settings
         self._load_env_var("ZAI_API_KEY")
