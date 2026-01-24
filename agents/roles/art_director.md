@@ -29,6 +29,7 @@ Return a JSON object with design specifications:
 ```json
 {
   "persona": "persona_name",
+  "image_prompt": "A detailed text description for AI image generation - describe the hero banner: style, mood, colors, composition, what to show, what to avoid. Example: Professional email hero banner for Christmas campaign featuring elegant gift boxes with gold ribbons on dark background, minimalist style, warm lighting, space for text on left side, no text or typography in the image, high quality commercial photography",
   "layout": {
     "structure": "single-column|two-column|hero-focused",
     "width": "600px",
@@ -55,7 +56,7 @@ Return a JSON object with design specifications:
     "mobile_padding": "20px"
   },
   "visual_elements": {
-    "hero_image": "description of hero image style",
+    "hero_style": "minimal|bold|elegant",
     "cta_style": "rounded|square|pill",
     "cta_size": "large|medium",
     "dividers": true|false
@@ -67,6 +68,8 @@ Return a JSON object with design specifications:
   }
 }
 ```
+
+**IMPORTANT**: The `image_prompt` field is REQUIRED. It must be a complete, descriptive text prompt for generating the hero banner image. Be specific about style, colors, mood, and composition.
 
 ## GUIDELINES
 - Respect brand colors from intelligence

@@ -187,8 +187,64 @@ def _extract_prompt_from_input(raw_input: str) -> str:
         # Check email_design_specs structure
         if "email_design_specs" in data:
             specs = data["email_design_specs"]
-            if isinstance(specs, dict) and "visual_elements" in specs:
-                return _extract_prompt_from_input(json.dumps(specs))
+            if isinstance(specs, dict):
+                # First check for image_prompt in specs
+                for field in prompt_fields:
+                    if field in specs and isinstance(specs[field], str):
+                        return specs[field]
+                if "visual_elements" in specs:
+                    return _extract_prompt_from_input(json.dumps(specs))
+
+        # Check email_template structure
+        if "email_template" in data:
+            template = data["email_template"]
+            if isinstance(template, dict):
+                for field in prompt_fields:
+                    if field in template and isinstance(template[field], str):
+                        return template[field]
+
+        # Build prompt from available design data as fallback
+        prompt_parts = ["Professional email hero banner"]
+
+        # Extract theme/campaign info
+        theme = data.get("theme") or data.get("campaign") or data.get("name", "")
+        if theme and isinstance(theme, str):
+            prompt_parts.append(f"for {theme}")
+
+        # Extract persona/style
+        persona = data.get("persona", "")
+        if persona and isinstance(persona, str):
+            style_map = {
+                "minimalist": "clean minimalist style with lots of negative space",
+                "bold": "vibrant energetic style with dynamic composition",
+                "elegant": "sophisticated luxurious style with refined aesthetics",
+            }
+            style_desc = style_map.get(persona.lower(), f"{persona} style")
+            prompt_parts.append(style_desc)
+
+        # Extract colors (properly formatted)
+        colors = data.get("colors") or data.get("color_palette", {})
+        if isinstance(colors, dict):
+            color_values = [
+                v for v in colors.values() if isinstance(v, str) and v.startswith("#")
+            ][:3]
+            if color_values:
+                prompt_parts.append(
+                    f"color palette featuring {', '.join(color_values)}"
+                )
+
+        # Add standard image generation guidance
+        prompt_parts.extend(
+            [
+                "high quality commercial photography",
+                "clean composition with space for text overlay",
+                "no text or typography in the image",
+            ]
+        )
+
+        # If we have enough context, return the built prompt
+        if len(prompt_parts) > 3:
+            return ". ".join(prompt_parts)
 
         # Check for color_palette and build a generic prompt
         if "color_palette" in data:
