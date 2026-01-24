@@ -94,12 +94,26 @@ logs/
 # Project-specific: Generated Output
 # -----------------------------------------------------------------------------
 output/
-outputs/
+sessions/
 
 # -----------------------------------------------------------------------------
-# Project-specific: Meta Templates (agent definition creators)
+# Project-specific: Experiments & Tests
 # -----------------------------------------------------------------------------
-templates/agent_definition_creator*.md
+experiments/
+
+# -----------------------------------------------------------------------------
+# Project-specific: Agent Definitions
+# -----------------------------------------------------------------------------
+agents/created/
+agents/meta_agent_creator*.md
+
+# Keep core agent definitions (exclude created/meta)
+!agents/*.md
+!agents/
+
+# Keep documentation
+!DOCS/
+!DOCS/**
 
 # -----------------------------------------------------------------------------
 # Project-specific: Runtime Data
