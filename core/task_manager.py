@@ -26,7 +26,19 @@ class TaskManager:
 
     def create_initial_tasks(self) -> List[Task]:
         """Create the initial task list using AI"""
-        logger.info("Creating initial task list")
+        # Import colors
+        try:
+            from colorama import Fore, Style
+        except ImportError:
+
+            class Fore:
+                CYAN = ""
+
+            class Style:
+                RESET_ALL = ""
+
+        print(f"{Fore.CYAN}Creating task plan...{Style.RESET_ALL}")
+        logger.debug("Creating initial task list")
 
         template_name = get_setting("PROMPT_TEMPLATE", "default_tasks")
         prompt = get_prompt_template(template_name, objective=self.objective)
@@ -48,7 +60,7 @@ class TaskManager:
             return []
 
         self.tasks = [Task.from_dict(item) for item in json_data]
-        logger.info(f"Created {len(self.tasks)} tasks")
+        logger.debug(f"Created {len(self.tasks)} tasks")
         return self.tasks
 
     def get_task_by_id(self, task_id: int) -> Optional[Task]:
@@ -76,11 +88,31 @@ class TaskManager:
 
     def execute_task(self, task: Task) -> Result:
         """Execute a task and return the result"""
+        # Import colors
+        try:
+            from colorama import Fore, Style
+        except ImportError:
+
+            class Fore:
+                CYAN = GREEN = YELLOW = BLUE = ""
+
+            class Style:
+                BRIGHT = RESET_ALL = ""
+
         # Get task description
         task_desc = getattr(
             task, "description", getattr(task, "task", f"Task #{task.id}")
         )
-        logger.info(f"Executing task #{task.id}: {task_desc}")
+
+        # Truncate long descriptions for console
+        display_desc = task_desc if len(task_desc) <= 100 else task_desc[:97] + "..."
+
+        print(
+            f"\n{Fore.CYAN}▶ Executing Task #{task.id}{Style.RESET_ALL} [{Fore.BLUE}{task.ability}{Style.RESET_ALL}]"
+        )
+        print(f"  {display_desc}\n")
+
+        logger.debug(f"Executing task #{task.id}: {task_desc}")
 
         # Prepare context from dependencies
         context = ""
@@ -111,15 +143,71 @@ class TaskManager:
         task.mark_complete(output)
         self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
 
-        logger.info(f"Task #{task.id} completed")
+        # Import colors for completion message
+        try:
+            from colorama import Fore, Style
+        except ImportError:
+
+            class Fore:
+                GREEN = ""
+
+            class Style:
+                RESET_ALL = ""
+
+        print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
+        logger.debug(f"Task #{task.id} completed")
         return Result(task_id=task.id, content=output, success=True)
 
     def print_task_list(self) -> None:
-        """Print the current task list"""
-        logger.info("===== TASK LIST =====")
+        """Print the current task list in a readable format"""
+        # Import colors
+        try:
+            from colorama import Fore, Style
+        except ImportError:
+
+            class Fore:
+                CYAN = GREEN = YELLOW = RED = BLUE = ""
+
+            class Style:
+                BRIGHT = RESET_ALL = ""
+
+        print(f"\n{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
+
         for task in self.tasks:
-            logger.info(str(task))
-        logger.info("=====================")
+            # Status indicator
+            if task.status.value == "complete":
+                status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
+                status_color = Fore.GREEN
+            elif task.status.value == "incomplete":
+                status_icon = f"{Fore.YELLOW}○{Style.RESET_ALL}"
+                status_color = Fore.YELLOW
+            else:
+                status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
+                status_color = Fore.RED
+
+            # Task description
+            display_desc = task._additional_attributes.get("insight", task.description)
+
+            # Truncate long descriptions
+            if len(display_desc) > 120:
+                display_desc = display_desc[:117] + "..."
+
+            # Print task header
+            print(
+                f"{status_icon} {Fore.CYAN}Task #{task.id}{Style.RESET_ALL} [{Fore.BLUE}{task.ability}{Style.RESET_ALL}]"
+            )
+            print(f"  {display_desc}")
+
+            # Print dependencies if any
+            if task.dependent_task_ids:
+                deps = ", ".join([f"#{d}" for d in task.dependent_task_ids])
+                print(f"  {Fore.YELLOW}Depends on:{Style.RESET_ALL} {deps}")
+
+            print()  # Blank line between tasks
+
+        print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
 
     def get_session_summary(self) -> str:
         """Get the current session summary"""

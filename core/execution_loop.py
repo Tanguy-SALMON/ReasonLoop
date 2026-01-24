@@ -30,13 +30,29 @@ def run_execution_loop(objective: str) -> str:
     completed_tasks = 0
     total_tasks = len(tasks)
 
+    # Import colors
+    try:
+        from colorama import Fore, Style
+    except ImportError:
+
+        class Fore:
+            CYAN = GREEN = YELLOW = ""
+
+        class Style:
+            BRIGHT = RESET_ALL = ""
+
     while True:
         cycle_count += 1
-        logger.info(f"CYCLE #{cycle_count} ({completed_tasks}/{total_tasks} completed)")
+        progress_bar = "█" * completed_tasks + "░" * (total_tasks - completed_tasks)
+        print(f"\n{Fore.CYAN}{'═' * 80}{Style.RESET_ALL}")
+        print(
+            f"{Fore.GREEN}Progress: [{progress_bar}] {completed_tasks}/{total_tasks}{Style.RESET_ALL}"
+        )
+        print(f"{Fore.CYAN}{'═' * 80}{Style.RESET_ALL}")
 
         next_task = task_manager.find_next_task()
         if not next_task:
-            logger.info("All tasks complete")
+            print(f"\n{Fore.GREEN}✓ All tasks completed!{Style.RESET_ALL}\n")
             break
 
         result = task_manager.execute_task(next_task)

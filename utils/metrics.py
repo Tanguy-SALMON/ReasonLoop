@@ -1,20 +1,23 @@
-import time
-import psutil
-import logging
-from functools import wraps
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable
-import threading
 import json
-from datetime import datetime
+import logging
 import os
+import threading
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
+
+import psutil
 
 # Configure logging
 logger = logging.getLogger("metrics")
 
+
 @dataclass
 class TokenMetrics:
     """Track token usage for LLM operations"""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
@@ -30,12 +33,14 @@ class TokenMetrics:
         return {
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
-            "total_tokens": self.total_tokens
+            "total_tokens": self.total_tokens,
         }
+
 
 @dataclass
 class ExecutionMetrics:
     """Track execution time and performance metrics"""
+
     start_time: float = 0
     end_time: float = 0
     duration_ms: float = 0
@@ -56,12 +61,14 @@ class ExecutionMetrics:
         return {
             "start_time": self.start_time,
             "end_time": self.end_time,
-            "duration_ms": self.duration_ms
+            "duration_ms": self.duration_ms,
         }
+
 
 @dataclass
 class SystemMetrics:
     """Track system resource usage"""
+
     cpu_percent: float = 0
     memory_percent: float = 0
     memory_used_mb: float = 0
@@ -79,18 +86,20 @@ class SystemMetrics:
         return {
             "cpu_percent": self.cpu_percent,
             "memory_percent": self.memory_percent,
-            "memory_used_mb": self.memory_used_mb
+            "memory_used_mb": self.memory_used_mb,
         }
+
 
 @dataclass
 class TaskMetrics:
     """Track metrics for a specific task"""
+
     task_id: str
     task_type: str
     execution: ExecutionMetrics = field(default_factory=ExecutionMetrics)
     tokens: TokenMetrics = field(default_factory=TokenMetrics)
     system: SystemMetrics = field(default_factory=SystemMetrics)
-    subtasks: List['TaskMetrics'] = field(default_factory=list)
+    subtasks: List["TaskMetrics"] = field(default_factory=list)
     status: str = "pending"  # pending, running, completed, failed
     error: Optional[str] = None
 
@@ -104,12 +113,14 @@ class TaskMetrics:
             "system": self.system.to_dict(),
             "subtasks": [st.to_dict() for st in self.subtasks],
             "status": self.status,
-            "error": self.error
+            "error": self.error,
         }
+
 
 @dataclass
 class SessionMetrics:
     """Track metrics for an entire session"""
+
     session_id: str
     start_time: float = field(default_factory=time.time)
     tasks: List[TaskMetrics] = field(default_factory=list)
@@ -120,7 +131,7 @@ class SessionMetrics:
         self.tasks.append(task)
         self.total_tokens.update(
             prompt_tokens=task.tokens.prompt_tokens,
-            completion_tokens=task.tokens.completion_tokens
+            completion_tokens=task.tokens.completion_tokens,
         )
 
     def to_dict(self) -> Dict:
@@ -131,11 +142,13 @@ class SessionMetrics:
             "end_time": time.time(),
             "duration_s": time.time() - self.start_time,
             "tasks": [task.to_dict() for task in self.tasks],
-            "total_tokens": self.total_tokens.to_dict()
+            "total_tokens": self.total_tokens.to_dict(),
         }
+
 
 class MetricsManager:
     """Singleton manager for tracking metrics across the application"""
+
     _instance = None
     _lock = threading.Lock()
 
@@ -160,7 +173,7 @@ class MetricsManager:
 
         self._current_session_id = session_id
         self._sessions[session_id] = SessionMetrics(session_id=session_id)
-        logger.info(f"Started metrics session: {session_id}")
+        logger.debug(f"Started metrics session: {session_id}")
         return session_id
 
     def get_current_session(self) -> Optional[SessionMetrics]:
@@ -193,14 +206,16 @@ class MetricsManager:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{self._metrics_dir}/{session_id}_{timestamp}.json"
 
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(session.to_dict(), f, indent=2)
 
         logger.info(f"Saved session metrics to {filename}")
         return filename
 
+
 def track_execution(task_id: str, task_type: str):
     """Decorator to track execution metrics for a function"""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -223,7 +238,9 @@ def track_execution(task_id: str, task_type: str):
                 task.system.capture()
 
         return wrapper
+
     return decorator
+
 
 def track_llm_usage(prompt_tokens: int, completion_tokens: int, task_id: str):
     """Update token usage for a specific task"""
@@ -238,6 +255,7 @@ def track_llm_usage(prompt_tokens: int, completion_tokens: int, task_id: str):
         if task.task_id == task_id:
             task.tokens.update(prompt_tokens, completion_tokens)
             break
+
 
 def get_metrics_summary() -> Dict:
     """Get a summary of current metrics"""
@@ -255,5 +273,5 @@ def get_metrics_summary() -> Dict:
         "tasks_count": len(session.tasks),
         "total_execution_ms": total_execution_time,
         "total_tokens": session.total_tokens.to_dict(),
-        "system": SystemMetrics().capture().to_dict()
+        "system": SystemMetrics().capture().to_dict(),
     }

@@ -3,9 +3,10 @@ Logging configuration for the application
 """
 
 import logging
-import sys
 import os
+import sys
 from datetime import datetime
+
 
 def setup_logging(level=logging.INFO):
     """Setup logging configuration"""
@@ -24,16 +25,18 @@ def setup_logging(level=logging.INFO):
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # Create console handler
+    # Create console handler with clean format (no timestamp)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
-    console_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    console_format = logging.Formatter("%(message)s")  # Clean console output
     console_handler.setFormatter(console_format)
 
     # Create file handler
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(level)
-    file_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    file_format = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    )
     file_handler.setFormatter(file_format)
 
     # Add handlers to root logger
