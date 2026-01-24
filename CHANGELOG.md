@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-24
+
+### Added
+- **Web Scraping System**: Deep website crawling with Playwright for JavaScript rendering
+- **Website Intelligence**: Extract brand identity, products, design systems, and customer insights
+- **Email Campaign Generation**: Automated branded email creation from website analysis
+- **URL Normalization**: Intelligent base URL detection (keeps/removes locale paths based on context)
+- **Organized Output Sessions**: Timestamped folders with screenshots/emails/data/summary.md
+- **Colored Terminal Output**: Beautiful, readable output with progress bars and status indicators
+- **Output Manager**: Centralized file organization with automatic summary generation
+- Project structure reorganization (templates → agents, outputs → sessions)
+- Clean, timestamp-free console logging (timestamps kept in log files)
+
+### Changed
+- Dramatically improved terminal UX with colors and visual indicators
+- Reduced logging verbosity (moved detailed logs to DEBUG level)
+- Updated folder structure: agents/, sessions/, DOCS/, experiments/
+- Better task list display with truncation and clear dependencies
+- Progress bars showing completion status visually
+
+### Fixed
+- Missing dependencies (playwright, nest-asyncio, colorama)
+- Verbose agent loading messages cluttering output
+- Long task descriptions breaking readability
+- Unclear execution progress
+
+## [0.1.0] - Previous Release
+
 ### Added
 - Comprehensive LLM metrics tracking with real API usage data
 - Session-based metrics management with unique IDs and timestamps
