@@ -8,12 +8,46 @@ A modular AI agent system with comprehensive metrics tracking, multi-provider LL
 ## ✨ Features
 
 - **🤖 Multi-Agent Orchestration**: Intelligent task breakdown and execution
+- **🔄 Multi-LLM Provider Support**: Switch between XAI (Grok), Anthropic (Claude), and OpenAI (GPT)
 - **📊 Real-Time Metrics**: Actual token usage, costs, and performance tracking
 - **🌐 Deep Web Scraping**: Playwright-based crawler with JavaScript rendering
 - **🎨 Website Intelligence**: Extract brand identity, products, design systems
 - **📧 Email Campaign Generation**: Automated branded email creation from website analysis
 - **💾 Email Template Saving**: Automatic extraction and saving of HTML templates to organized folders
 - **📸 Screenshot Capture**: Full-page screenshots with design metrics extraction
+
+## 🔧 LLM Providers
+
+ReasonLoop supports multiple LLM providers. Configure in your `.env` file:
+
+### Available Providers
+
+| Provider | Models | Cost (Input/Output per 1M tokens) |
+|----------|--------|-----------------------------------|
+| **XAI** (default) | `grok-4-1-fast-non-reasoning` | $0.20 / $0.50 |
+| **Anthropic** | `claude-opus-4-5-20251101` | $15.00 / $75.00 |
+| **Anthropic** | `claude-sonnet-4-20250514` | $3.00 / $15.00 |
+| **Anthropic** | `claude-3-haiku-20240307` | $0.25 / $1.25 |
+| **OpenAI** | `gpt-4o` | $2.50 / $10.00 |
+| **OpenAI** | `gpt-4o-mini` | $0.15 / $0.60 |
+
+### Configuration
+
+```bash
+# .env - Switch to Anthropic Claude
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your-key-here
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+
+# Or use OpenAI
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-key-here
+OPENAI_MODEL=gpt-4o
+
+# Role-based model selection (optional)
+ANTHROPIC_MODEL_EXECUTOR=claude-opus-4-5-20251101
+ANTHROPIC_MODEL_PLANNER=claude-sonnet-4-20250514
+```
 
 
 

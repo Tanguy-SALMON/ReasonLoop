@@ -613,7 +613,8 @@ def email_design_ability(
     campaign_goal: str = "Promote new arrivals and drive sales",
     num_designs: int = 3,
     parallel: bool = True,
-    output_dir: Optional[str] = None,
+    domain: Optional[str] = None,
+    **kwargs,
 ) -> str:
     """
     ReasonLoop ability wrapper for email design generation.
@@ -623,10 +624,10 @@ def email_design_ability(
         campaign_goal: What the campaign should achieve
         num_designs: Number of design variations to generate (default: 3)
         parallel: Run agents concurrently (default: True)
-        output_dir: Directory to save HTML files (auto-detected from brand data if not provided)
+        domain: Domain name (passed by task_manager, unused here)
 
     Returns:
-        JSON string with all designs and metadata
+        JSON string with all designs and metadata (HTML included for save-email-templates)
     """
     logger.info(
         f"Starting email design generation: {num_designs} designs, parallel={parallel}"
@@ -639,44 +640,6 @@ def email_design_ability(
         else:
             brand_data = brand_intelligence_json
 
-        # Try to find output session from brand data (web crawler output)
-        if not output_dir:
-            output_dir = brand_data.get("output_session")
-            if output_dir:
-                output_dir = os.path.join(output_dir, "emails")
-                logger.info(f"Using output session emails folder: {output_dir}")
-
-        # If still no output_dir, try to extract from URL in brand data
-        if not output_dir:
-            import re
-
-            from utils.url_normalizer import normalize_url
-
-            # Look for URL in brand data
-            url = (
-                brand_data.get("url")
-                or brand_data.get("website_url")
-                or brand_data.get("source_url")
-            )
-            if not url:
-                # Try to find URL in the JSON string
-                url_match = re.search(
-                    r"https?://[^\s\",}]+",
-                    brand_intelligence_json
-                    if isinstance(brand_intelligence_json, str)
-                    else "",
-                )
-                if url_match:
-                    url = url_match.group(0).rstrip(".,;:)")
-
-            if url:
-                try:
-                    _, clean_domain = normalize_url(url)
-                    output_dir = os.path.join("output", clean_domain, "emails")
-                    logger.info(f"Auto-detected output folder: {output_dir}")
-                except Exception as e:
-                    logger.debug(f"Could not extract domain from URL: {e}")
-
         # Create orchestrator and generate designs
         orchestrator = DesignOrchestrator(num_designs=num_designs)
         designs = orchestrator.generate_designs(
@@ -685,40 +648,16 @@ def email_design_ability(
             parallel=parallel,
         )
 
-        # Save HTML files if output directory is available
-        saved_files = []
-        if output_dir and designs:
-            saved_files = save_designs_to_html(designs, output_dir)
-            logger.info(f"Saved {len(saved_files)} email templates to {output_dir}")
-
-            # Update summary.md with email count
-            try:
-                from utils.output_manager import OutputManager
-
-                # Get session dir (parent of emails/)
-                session_dir = os.path.dirname(output_dir)
-                session_name = os.path.basename(session_dir)
-                parts = session_name.rsplit("_", 1)  # Split: domain_YYYYMMDD
-                if len(parts) >= 2:
-                    domain = parts[0]
-                    timestamp = parts[1]
-                    output_manager = OutputManager(domain, timestamp=timestamp)
-                    output_manager.update_email_count(len(saved_files))
-            except Exception as e:
-                logger.warning(f"Could not update summary email count: {e}")
-
-        # Format response
+        # Format response with HTML included for downstream save task
         response = {
             "success": True,
             "num_designs": len(designs),
             "campaign_goal": campaign_goal,
             "designs": [design.to_dict() for design in designs],
-            "saved_files": saved_files,
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "personas_used": [d.persona for d in designs],
                 "parallel_execution": parallel,
-                "output_dir": output_dir,
             },
         }
 

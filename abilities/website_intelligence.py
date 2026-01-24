@@ -664,12 +664,13 @@ class WebsiteIntelligenceExtractor:
         return [v for v, _ in counts.most_common(limit)]
 
 
-def website_intelligence_ability(task_input: str) -> str:
+def website_intelligence_ability(task_input: str, **kwargs) -> str:
     """
     Extract comprehensive website intelligence for email campaign generation
 
     Args:
         task_input: Task description that may contain a URL
+        **kwargs: Additional parameters (domain, task_id passed by task_manager)
 
     Returns:
         JSON string with complete website intelligence
@@ -802,6 +803,7 @@ def deep_website_intelligence_ability(
     url: str,
     max_pages: int = 10,
     max_depth: int = 2,
+    **kwargs,
 ) -> str:
     """
     Extract comprehensive website intelligence using Playwright for JS rendering.

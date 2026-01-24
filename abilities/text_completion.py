@@ -2,21 +2,36 @@
 
 import json
 import logging
-from typing import Optional, Tuple, Dict, Any, Union
+from typing import Any, Dict, Optional, Tuple, Union
+
 import requests
 
-from config.settings import get_setting, get_model_for_provider
+from config.settings import get_model_for_provider, get_setting
 
 logger = logging.getLogger(__name__)
 
 # Pricing per 1M tokens (prompt/completion) in USD
 PRICING = {
     "xai": {
-        "grok-2-1212": (0.20, 0.50),      # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
-        "grok-2-vision-1212": (0.20, 0.50), # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
-        "grok-beta": (0.50, 1.50),          # Input $0.50 per 1M tokens, Output $1.50 per 1M tokens
-        "grok-4-1-fast-non-reasoning": (0.20, 0.50),  # Input $0.20 per 1M tokens, Output $0.50 per 1M tokens
-    }
+        "grok-2-1212": (0.20, 0.50),
+        "grok-2-vision-1212": (0.20, 0.50),
+        "grok-beta": (0.50, 1.50),
+        "grok-4-1-fast-non-reasoning": (0.20, 0.50),
+    },
+    "anthropic": {
+        "claude-opus-4-5-20251101": (15.0, 75.0),
+        "claude-sonnet-4-20250514": (3.0, 15.0),
+        "claude-3-5-sonnet-20241022": (3.0, 15.0),
+        "claude-3-haiku-20240307": (0.25, 1.25),
+        "default": (3.0, 15.0),
+    },
+    "openai": {
+        "gpt-4o": (2.50, 10.0),
+        "gpt-4o-mini": (0.15, 0.60),
+        "gpt-4-turbo": (10.0, 30.0),
+        "gpt-3.5-turbo": (0.50, 1.50),
+        "default": (2.50, 10.0),
+    },
 }
 
 
@@ -25,10 +40,18 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def calculate_cost(provider: str, model: str, prompt_tokens: int, completion_tokens: int, cached_tokens: int = 0) -> float:
+def calculate_cost(
+    provider: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    cached_tokens: int = 0,
+) -> float:
     """Calculate cost in USD based on provider pricing (per 1 million tokens)"""
     provider_pricing = PRICING.get(provider.lower(), {})
-    model_pricing = provider_pricing.get(model, provider_pricing.get("default", (0.0, 0.0)))
+    model_pricing = provider_pricing.get(
+        model, provider_pricing.get("default", (0.0, 0.0))
+    )
 
     prompt_price, completion_price = model_pricing
 
@@ -37,13 +60,14 @@ def calculate_cost(provider: str, model: str, prompt_tokens: int, completion_tok
     prompt_cost = (regular_prompt_tokens / 1_000_000) * prompt_price
 
     # Cached input cost (cheaper)
-    cached_cost = (cached_tokens / 1_000_000) * 0.05  # $0.05 per million for cached input
+    cached_cost = (
+        cached_tokens / 1_000_000
+    ) * 0.05  # $0.05 per million for cached input
 
     # Completion/output cost
     completion_cost = (completion_tokens / 1_000_000) * completion_price
 
     return prompt_cost + cached_cost + completion_cost
-
 
 
 class XAIProvider:
@@ -53,7 +77,9 @@ class XAIProvider:
         self.provider_name = "xai"
         self.logger = logging.getLogger(f"{__name__}.{self.provider_name}")
         self.api_key = get_setting("XAI_API_KEY")
-        self.api_url = get_setting("XAI_API_URL", "https://api.x.ai/v1/chat/completions")
+        self.api_url = get_setting(
+            "XAI_API_URL", "https://api.x.ai/v1/chat/completions"
+        )
 
     def complete(self, prompt: str, role: Optional[str] = None) -> Tuple[str, Dict]:
         """Execute completion and return response with usage data"""
@@ -64,7 +90,7 @@ class XAIProvider:
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+            "Authorization": f"Bearer {self.api_key}",
         }
 
         data = {
@@ -84,7 +110,9 @@ class XAIProvider:
         content = result["choices"][0]["message"]["content"]
         return content, result
 
-    def get_usage(self, prompt: str, response: str, api_response: Dict) -> Dict[str, Any]:
+    def get_usage(
+        self, prompt: str, response: str, api_response: Dict
+    ) -> Dict[str, Any]:
         """Extract usage metrics from API response"""
         usage = api_response.get("usage", {})
 
@@ -121,8 +149,12 @@ class XAIProvider:
             cost_usd = cost_usd / 10000000.0
         else:
             # Get cached tokens from API response
-            cached_tokens = usage.get("prompt_tokens_details", {}).get("cached_tokens", 0)
-            cost_usd = calculate_cost("xai", model, prompt_tokens, completion_tokens, cached_tokens)
+            cached_tokens = usage.get("prompt_tokens_details", {}).get(
+                "cached_tokens", 0
+            )
+            cost_usd = calculate_cost(
+                "xai", model, prompt_tokens, completion_tokens, cached_tokens
+            )
 
         # Get cached tokens from API for logging
         cached_tokens = usage.get("prompt_tokens_details", {}).get("cached_tokens", 0)
@@ -135,13 +167,184 @@ class XAIProvider:
             "provider": "xai",
             "cost_usd": cost_usd,
             "cached_tokens": int(cached_tokens),
-            "usage_source": "api" if usage else "estimated"
+            "usage_source": "api" if usage else "estimated",
         }
 
         self.logger.debug(f"Final usage result: {result}")
         return result
 
-    def execute(self, prompt: str, role: Optional[str] = None, return_usage: bool = False):
+    def execute(
+        self, prompt: str, role: Optional[str] = None, return_usage: bool = False
+    ):
+        """Execute completion with optional usage tracking"""
+        try:
+            response, api_response = self.complete(prompt, role)
+
+            if return_usage:
+                usage = self.get_usage(prompt, response, api_response)
+                return response, usage
+
+            return response
+
+        except Exception as e:
+            error_msg = f"Error calling {self.provider_name} API: {str(e)}"
+            self.logger.error(error_msg)
+            if return_usage:
+                return error_msg, {}
+            return error_msg
+
+
+class AnthropicProvider:
+    """Anthropic (Claude) provider implementation"""
+
+    def __init__(self):
+        self.provider_name = "anthropic"
+        self.logger = logging.getLogger(f"{__name__}.{self.provider_name}")
+        self.api_key = get_setting("ANTHROPIC_API_KEY")
+        self.api_url = get_setting(
+            "ANTHROPIC_API_URL", "https://api.anthropic.com/v1/messages"
+        )
+
+    def complete(self, prompt: str, role: Optional[str] = None) -> Tuple[str, Dict]:
+        """Execute completion and return response with usage data"""
+        if not self.api_key:
+            raise ValueError("ANTHROPIC_API_KEY not configured")
+
+        model = get_model_for_provider("anthropic", role)
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": get_setting("LLM_MAX_TOKENS", 4096),
+            "temperature": get_setting("LLM_TEMPERATURE", 0.7),
+        }
+
+        response = requests.post(self.api_url, headers=headers, json=data, timeout=120)
+        response.raise_for_status()
+        result = response.json()
+
+        self.logger.debug(f"Anthropic API Response: {json.dumps(result, indent=2)}")
+
+        content = result["content"][0]["text"]
+        return content, result
+
+    def get_usage(
+        self, prompt: str, response: str, api_response: Dict
+    ) -> Dict[str, Any]:
+        """Extract usage metrics from API response"""
+        usage = api_response.get("usage", {})
+
+        prompt_tokens = usage.get("input_tokens", estimate_tokens(prompt))
+        completion_tokens = usage.get("output_tokens", estimate_tokens(response))
+        total_tokens = prompt_tokens + completion_tokens
+
+        model = api_response.get("model", get_model_for_provider("anthropic", None))
+        cost_usd = calculate_cost("anthropic", model, prompt_tokens, completion_tokens)
+
+        return {
+            "prompt_tokens": int(prompt_tokens),
+            "completion_tokens": int(completion_tokens),
+            "total_tokens": int(total_tokens),
+            "model": model,
+            "provider": "anthropic",
+            "cost_usd": cost_usd,
+            "cached_tokens": 0,
+            "usage_source": "api" if usage else "estimated",
+        }
+
+    def execute(
+        self, prompt: str, role: Optional[str] = None, return_usage: bool = False
+    ):
+        """Execute completion with optional usage tracking"""
+        try:
+            response, api_response = self.complete(prompt, role)
+
+            if return_usage:
+                usage = self.get_usage(prompt, response, api_response)
+                return response, usage
+
+            return response
+
+        except Exception as e:
+            error_msg = f"Error calling {self.provider_name} API: {str(e)}"
+            self.logger.error(error_msg)
+            if return_usage:
+                return error_msg, {}
+            return error_msg
+
+
+class OpenAIProvider:
+    """OpenAI provider implementation"""
+
+    def __init__(self):
+        self.provider_name = "openai"
+        self.logger = logging.getLogger(f"{__name__}.{self.provider_name}")
+        self.api_key = get_setting("OPENAI_API_KEY")
+        self.api_url = get_setting(
+            "OPENAI_API_URL", "https://api.openai.com/v1/chat/completions"
+        )
+
+    def complete(self, prompt: str, role: Optional[str] = None) -> Tuple[str, Dict]:
+        """Execute completion and return response with usage data"""
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY not configured")
+
+        model = get_model_for_provider("openai", role)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": get_setting("LLM_TEMPERATURE", 0.7),
+            "max_tokens": get_setting("LLM_MAX_TOKENS", 4096),
+        }
+
+        response = requests.post(self.api_url, headers=headers, json=data, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+
+        self.logger.debug(f"OpenAI API Response: {json.dumps(result, indent=2)}")
+
+        content = result["choices"][0]["message"]["content"]
+        return content, result
+
+    def get_usage(
+        self, prompt: str, response: str, api_response: Dict
+    ) -> Dict[str, Any]:
+        """Extract usage metrics from API response"""
+        usage = api_response.get("usage", {})
+
+        prompt_tokens = usage.get("prompt_tokens", estimate_tokens(prompt))
+        completion_tokens = usage.get("completion_tokens", estimate_tokens(response))
+        total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+
+        model = api_response.get("model", get_model_for_provider("openai", None))
+        cost_usd = calculate_cost("openai", model, prompt_tokens, completion_tokens)
+
+        return {
+            "prompt_tokens": int(prompt_tokens),
+            "completion_tokens": int(completion_tokens),
+            "total_tokens": int(total_tokens),
+            "model": model,
+            "provider": "openai",
+            "cost_usd": cost_usd,
+            "cached_tokens": 0,
+            "usage_source": "api" if usage else "estimated",
+        }
+
+    def execute(
+        self, prompt: str, role: Optional[str] = None, return_usage: bool = False
+    ):
         """Execute completion with optional usage tracking"""
         try:
             response, api_response = self.complete(prompt, role)
@@ -165,21 +368,23 @@ class ProviderFactory:
 
     _providers = {
         "xai": XAIProvider,
+        "anthropic": AnthropicProvider,
+        "openai": OpenAIProvider,
     }
 
     @classmethod
-    def get_provider(cls, provider_name: str) -> XAIProvider:
+    def get_provider(cls, provider_name: str):
         """Get provider instance by name"""
         provider_class = cls._providers.get(provider_name.lower())
         if not provider_class:
-            raise ValueError(f"Unknown LLM provider: {provider_name}")
+            raise ValueError(
+                f"Unknown LLM provider: {provider_name}. Available: {list(cls._providers.keys())}"
+            )
         return provider_class()
 
 
 def text_completion_ability(
-    prompt: str,
-    role: Optional[str] = None,
-    return_usage: bool = False
+    prompt: str, role: Optional[str] = None, return_usage: bool = False
 ) -> Union[str, Tuple[str, Dict[str, Any]]]:
     """
     Handle text completion using LLM providers
@@ -210,7 +415,9 @@ def stream_text_completion(prompt: str, role: Optional[str] = None) -> str:
     provider_name = get_setting("LLM_PROVIDER", "xai").lower()
 
     if provider_name != "xai":
-        logger.warning(f"Streaming not supported for {provider_name}, using regular completion")
+        logger.warning(
+            f"Streaming not supported for {provider_name}, using regular completion"
+        )
         result = text_completion_ability(prompt, role, return_usage=False)
         print(result)
         return result

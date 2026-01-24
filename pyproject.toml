@@ -1,6 +1,6 @@
 [project]
 name = "reasonloop"
-version = "0.2.1"
+version = "0.3.0"
 description = "A modular AI agent system with task orchestration and web crawling capabilities"
 authors = [
     {name = "Tanguy SALMON", email = "tanguy.salmon@gmail.com"}

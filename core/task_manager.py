@@ -20,16 +20,6 @@ from utils.url_normalizer import normalize_url
 logger = logging.getLogger(__name__)
 
 
-def _extract_domain_from_url(text: str) -> Optional[str]:
-    """Extract clean domain from a URL in text"""
-    match = re.search(r"https?://[^\s,]+", text)
-    if match:
-        url = match.group(0).rstrip(".,;:)")
-        _, domain = normalize_url(url)
-        return domain
-    return None
-
-
 class TaskManager:
     """Manages tasks in the system"""
 
@@ -37,6 +27,16 @@ class TaskManager:
         self.tasks: List[Task] = []
         self.session_summary = ""
         self.objective = objective
+        self.domain = self._extract_domain()
+
+    def _extract_domain(self) -> Optional[str]:
+        """Extract domain from objective URL"""
+        match = re.search(r"https?://[^\s,]+", self.objective)
+        if match:
+            url = match.group(0).rstrip(".,;:)")
+            _, domain = normalize_url(url)
+            return domain
+        return None
 
     def create_initial_tasks(self) -> List[Task]:
         """Create the initial task list using AI"""
@@ -57,7 +57,6 @@ class TaskManager:
 
         json_data = extract_json_from_text(response)
         if not json_data:
-            logger.error("Failed to parse task list from LLM response")
             print(f"{Fore.RED}Error: Could not create task plan{Style.RESET_ALL}")
             return []
 
@@ -76,7 +75,6 @@ class TaskManager:
         for task in self.tasks:
             if task.status != "incomplete":
                 continue
-
             deps_met = all(
                 self.get_task_by_id(dep_id)
                 and self.get_task_by_id(dep_id).status == "complete"
@@ -92,87 +90,54 @@ class TaskManager:
         display_desc = task_desc[:97] + "..." if len(task_desc) > 100 else task_desc
 
         print(
-            f"\n{Fore.YELLOW}▶ Executing Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
+            f"\n{Fore.YELLOW}▶ Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
         )
         print(f"  {display_desc}\n")
 
         # Collect dependency outputs
-        dep_outputs = []
-        for dep_id in task.dependent_task_ids:
-            dep_task = self.get_task_by_id(dep_id)
-            if dep_task and dep_task.output:
-                dep_outputs.append(dep_task.output)
+        dep_outputs = [
+            self.get_task_by_id(dep_id).output
+            for dep_id in task.dependent_task_ids
+            if self.get_task_by_id(dep_id) and self.get_task_by_id(dep_id).output
+        ]
+        full_dep_output = "\n\n".join(dep_outputs)
 
-        full_dependency_output = "\n\n".join(dep_outputs)
-        context = "\n\n".join(
-            f"Output from task #{dep_id}:\n{out[:500]}..."
-            for dep_id, out in zip(task.dependent_task_ids, dep_outputs)
-        )
+        # Build context for text-completion
+        context = {
+            "objective": self.objective,
+            "domain": self.domain,
+            "task_description": task_desc,
+            "dependency_output": full_dep_output,
+        }
 
-        # Execute based on ability type
-        output = self._execute_ability(task, task_desc, full_dependency_output, context)
+        output = self._execute_ability(task.ability, context, task.id)
 
         task.mark_complete(output)
         self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
-
         print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
+
         return Result(task_id=task.id, content=output, success=True)
 
-    def _execute_ability(
-        self, task: Task, task_desc: str, full_dep_output: str, context: str
-    ) -> str:
-        """Execute the appropriate ability for a task"""
-        domain = _extract_domain_from_url(self.objective)
+    def _execute_ability(self, ability: str, context: dict, task_id: int) -> str:
+        """Execute ability with context"""
 
-        if task.ability == "text-completion":
-            prompt = f"Complete this task: {task_desc}\nObjective: {self.objective}"
-            if context:
-                prompt += f"\n\nPrevious outputs:{context}"
-            return execute_ability(
-                task.ability,
-                prompt,
-                task_id=task.id,
-                role=self._determine_role(task_desc),
-            )
+        # text-completion: build a prompt with task description and dependencies
+        if ability == "text-completion":
+            prompt = f"Complete this task: {context['task_description']}\nObjective: {context['objective']}"
+            if context["dependency_output"]:
+                prompt += (
+                    f"\n\nPrevious outputs:\n{context['dependency_output'][:2000]}"
+                )
+            return execute_ability(ability, prompt, task_id=task_id, role="executor")
 
-        if task.ability == "save-email-templates":
-            return execute_ability(
-                task.ability, full_dep_output.strip(), domain=domain, task_id=task.id
-            )
-
-        if task.ability == "email-design":
-            campaign_goal = self._extract_campaign_goal(task_desc)
-            output_dir = f"output/{domain}/emails" if domain else None
-            return execute_ability(
-                task.ability,
-                full_dep_output.strip(),
-                campaign_goal=campaign_goal,
-                output_dir=output_dir,
-                task_id=task.id,
-            )
-
-        return execute_ability(task.ability, task_desc, task_id=task.id)
-
-    def _extract_campaign_goal(self, task_desc: str) -> str:
-        """Extract campaign goal from task description"""
-        match = re.search(r"campaign goal[:\s]+(.+?)(?:\.|$)", task_desc, re.IGNORECASE)
-        return (
-            match.group(1).strip()
-            if match
-            else "Promote products and drive conversions"
+        # All other abilities: pass dependency output (or task description) plus domain
+        content = context["dependency_output"] or context["task_description"]
+        return execute_ability(
+            ability,
+            content,
+            domain=context["domain"],
+            task_id=task_id,
         )
-
-    def _determine_role(self, task_desc: str) -> str:
-        """Determine AI role based on task description"""
-        task_lower = task_desc.lower()
-
-        if any(k in task_lower for k in ["plan", "design", "outline", "structure"]):
-            return "planner"
-        if any(k in task_lower for k in ["review", "analyze", "evaluate", "check"]):
-            return "reviewer"
-        if any(k in task_lower for k in ["execute", "implement", "generate", "write"]):
-            return "executor"
-        return "orchestrator"
 
     def print_task_list(self) -> None:
         """Print the current task list"""
@@ -180,14 +145,14 @@ class TaskManager:
         print(f"{Fore.YELLOW}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
 
-        status_icons = {
-            "complete": f"{Fore.GREEN}✓{Style.RESET_ALL}",
-            "incomplete": f"{Fore.YELLOW}○{Style.RESET_ALL}",
-            "failed": f"{Fore.RED}✗{Style.RESET_ALL}",
+        icons = {
+            "complete": f"{Fore.GREEN}✓",
+            "incomplete": f"{Fore.YELLOW}○",
+            "failed": f"{Fore.RED}✗",
         }
 
         for task in self.tasks:
-            icon = status_icons.get(task.status.value, f"{Fore.RED}?{Style.RESET_ALL}")
+            icon = icons.get(task.status.value, f"{Fore.RED}?") + Style.RESET_ALL
             desc = task._additional_attributes.get("insight", task.description)
             desc = desc[:117] + "..." if len(desc) > 120 else desc
 
@@ -195,14 +160,13 @@ class TaskManager:
                 f"{icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
             )
             print(f"  {desc}")
-
             if task.dependent_task_ids:
-                deps = ", ".join(f"#{d}" for d in task.dependent_task_ids)
-                print(f"  {Fore.YELLOW}Depends on:{Style.RESET_ALL} {deps}")
+                print(
+                    f"  {Fore.YELLOW}Depends on:{Style.RESET_ALL} {', '.join(f'#{d}' for d in task.dependent_task_ids)}"
+                )
             print()
 
         print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
 
     def get_session_summary(self) -> str:
-        """Get the current session summary"""
         return self.session_summary

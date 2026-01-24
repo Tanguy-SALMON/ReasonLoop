@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-24
+
+### Added
+- **Multi-LLM Provider Support**: Added Anthropic (Claude) and OpenAI providers to `text_completion.py`
+  - Anthropic models: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307`
+  - OpenAI models: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`
+  - Easy switching via `LLM_PROVIDER` environment variable
+  - Role-based model selection (orchestrator, planner, executor, reviewer)
+- **Updated Database Schema**: Enhanced `schema_website_intelligence_simple.sql` with:
+  - `design_typography`, `design_spacing`, `design_borders`, `design_shadows`, `design_buttons`, `design_layout` columns
+  - `llm_provider` and `llm_model` tracking columns
+  - `output_session` path column
+  - Additional indexes for `status`, `platform`, `pricing_tier`
+  - Comprehensive example queries for LLM comparison and design extraction
+- **Pricing Table**: Added cost tracking for all providers (per 1M tokens)
+
+### Changed
+- **Explicit Save Task**: Email saving is now an explicit task in the pipeline (not hidden in ability)
+  - Updated `email_design_agent.md` to v1.1 with `save-email-templates` as a separate task
+  - Removed auto-save logic from `email_design_ability`
+- **Simplified Task Manager**: Removed special-case ability handling
+  - All non-text-completion abilities now receive consistent parameters: `content` + `domain`
+  - Cleaner, more maintainable code
+- **Updated .env Configuration**: Added comprehensive Anthropic and OpenAI sections with available models
+
+### Fixed
+- Abilities now accept `**kwargs` to handle extra parameters from task_manager gracefully
+
 ## [0.2.1] - 2026-01-24
 
 ### Added
