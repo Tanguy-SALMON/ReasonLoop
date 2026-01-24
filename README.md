@@ -91,7 +91,7 @@ ReasonLoop is designed to be integrated into larger applications. For example, *
 - **Web Scraping**: Crawl client websites to extract brand assets
 - **AI Analysis**: Analyze brand identity, tone, colors, and products
 - **Data Enrichment**: Adjust email content tone based on brand intelligence
-- **Template Generation**: Create branded HTML email templates automatically
+- **Formatted Document Generation**: Create branded HTML email templates and reports
 
 ```python
 # In BE-Campaign's email automation workflow
