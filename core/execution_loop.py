@@ -2,6 +2,7 @@
 Main execution loop for the application
 """
 
+import json
 import logging
 import os
 import time
@@ -10,6 +11,73 @@ from datetime import datetime
 from core.task_manager import TaskManager
 
 logger = logging.getLogger(__name__)
+
+
+def _update_crawler_summary(task_manager: TaskManager, execution_time: float) -> None:
+    """
+    Update output/*/summary.md with task execution details if web crawler was used.
+
+    Searches for web_crawler tasks, finds their output_session paths, and updates
+    the summary files with the complete task list.
+    """
+    # Check if any task used web crawler abilities
+    crawler_sessions = []
+
+    for task in task_manager.tasks:
+        if (
+            task.ability in ["web_crawler", "web_crawler_with_screenshots"]
+            and task.output
+        ):
+            try:
+                # Parse JSON output to find output_session path
+                output_data = json.loads(task.output)
+                session_dir = output_data.get("output_session")
+
+                if session_dir:
+                    crawler_sessions.append(session_dir)
+            except (json.JSONDecodeError, KeyError, TypeError):
+                # Task output not in expected format, skip
+                continue
+
+    if not crawler_sessions:
+        # No web crawler tasks found
+        return
+
+    # Import OutputManager
+    from utils.output_manager import OutputManager
+
+    # Convert tasks to dict format for update_summary_with_tasks
+    tasks_data = [task.to_dict() for task in task_manager.tasks]
+
+    # Update each crawler session's summary
+    for session_dir in crawler_sessions:
+        try:
+            # Create OutputManager from existing session dir
+            # Extract domain and timestamp from session_dir format: output/domain_timestamp
+            session_name = os.path.basename(session_dir)
+            parts = session_name.rsplit(
+                "_", 2
+            )  # Split from right: domain_YYYYMMDD_HHMMSS
+
+            if len(parts) >= 3:
+                domain = "_".join(parts[:-2])
+                timestamp = f"{parts[-2]}_{parts[-1]}"
+            else:
+                # Fallback: use entire name as domain
+                domain = session_name
+                timestamp = None
+
+            output_manager = OutputManager(domain, timestamp)
+            output_manager.update_summary_with_tasks(tasks_data, execution_time)
+
+            logger.info(f"Updated summary in {session_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to update summary in {session_dir}: {e}")
+
+    if crawler_sessions:
+        logger.info(
+            f"Updated {len(crawler_sessions)} crawler session summaries with task details"
+        )
 
 
 def run_execution_loop(objective: str) -> str:
@@ -68,6 +136,9 @@ def run_execution_loop(objective: str) -> str:
     logger.info(
         f"COMPLETE: {completed_tasks}/{total_tasks} tasks in {execution_time:.2f}s"
     )
+
+    # Update output summary with task details if web crawler was used
+    _update_crawler_summary(task_manager, execution_time)
 
     # Save results to markdown file
     output_dir = "sessions"
