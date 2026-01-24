@@ -94,7 +94,10 @@ logs/
 # Project-specific: Generated Output
 # -----------------------------------------------------------------------------
 output/
-sessions/
+
+# Keep sessions/ tracked (execution results serve as examples)
+# Uncomment below if you want to ignore sessions:
+# sessions/
 
 # -----------------------------------------------------------------------------
 # Project-specific: Experiments & Tests
