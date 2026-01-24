@@ -18,12 +18,12 @@ class OutputManager:
 
     Structure:
     output/
-      ├── domain.com_20260124/      # Date-only, multiple runs same day share folder
+      ├── www.shiseido.com/         # Simple domain-based folders
       │   ├── screenshots/
       │   ├── emails/
       │   ├── data/
       │   └── summary.md
-      └── domain.com_20260125/
+      └── www.decathlon.co.th/
           └── ...
     """
 
@@ -34,17 +34,16 @@ class OutputManager:
         Initialize output manager for a domain.
 
         Args:
-            domain: Clean domain identifier (e.g., "shiseido.com-us-en")
+            domain: Clean domain identifier (e.g., "www.shiseido.com")
             base_dir: Base output directory (default: "output")
-            timestamp: Optional date string YYYYMMDD (auto-generated if not provided)
+            timestamp: Deprecated - kept for backward compatibility, ignored
         """
         self.domain = domain
         self.base_dir = base_dir
-        # Use date-only format so multiple runs on same day share the folder
-        self.timestamp = timestamp or datetime.now().strftime("%Y%m%d")
+        self.timestamp = None  # No longer used
 
-        # Create session folder: output/domain_YYYYMMDD/
-        self.session_dir = os.path.join(base_dir, f"{domain}_{self.timestamp}")
+        # Create session folder: output/domain/
+        self.session_dir = os.path.join(base_dir, domain)
 
         # Subdirectories
         self.screenshots_dir = os.path.join(self.session_dir, "screenshots")
