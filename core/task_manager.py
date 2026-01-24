@@ -137,18 +137,17 @@ class TaskManager:
                 task.ability, task_prompt, task_id=task.id, role=role
             )
         elif task.ability == "save-email-templates":
-            # Extract domain from task description or objective
+            # Extract domain from objective URL using url_normalizer
             import re
 
+            from utils.url_normalizer import normalize_url
+
             domain = None
-            domain_match = re.search(r"Domain:\s*([^\s,]+)", task_desc)
-            if domain_match:
-                domain = domain_match.group(1)
-            else:
-                # Try to extract from objective URL
-                url_match = re.search(r"https?://([^/\s]+)", self.objective)
-                if url_match:
-                    domain = url_match.group(1)
+            # Try to extract URL from objective
+            url_match = re.search(r"https?://[^\s,]+", self.objective)
+            if url_match:
+                url = url_match.group(0).rstrip(".,;:)")
+                _, domain = normalize_url(url)  # Returns (base_url, clean_domain)
 
             output = execute_ability(
                 task.ability,
