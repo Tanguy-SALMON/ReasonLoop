@@ -206,6 +206,18 @@ class TaskManager:
                 ability, prompt, task_id=task_id, role=execution_role
             )
 
+        # website-intelligence: pass the objective (contains URL) as input
+        if ability == "website-intelligence":
+            # The objective contains the URL, pass it directly
+            content = context["objective"]
+            logger.debug(f"Executing website-intelligence with objective: {content}")
+            return execute_ability(
+                ability,
+                content,
+                domain=context["domain"],
+                task_id=task_id,
+            )
+
         # All other abilities: pass dependency output (or task description) plus domain
         content = context["dependency_output"] or context["task_description"]
         logger.debug(f"Executing {ability} with domain: {context['domain']}")
