@@ -94,7 +94,7 @@ class TaskManager:
         except ImportError:
 
             class Fore:
-                CYAN = GREEN = YELLOW = BLUE = ""
+                CYAN = GREEN = YELLOW = BLUE = WHITE = ""
 
             class Style:
                 BRIGHT = RESET_ALL = ""
@@ -155,6 +155,36 @@ class TaskManager:
                 domain=domain,
                 task_id=task.id,
             )
+        elif task.ability == "email-design":
+            # email-design needs the brand intelligence JSON from dependencies
+            import re
+
+            from utils.url_normalizer import normalize_url
+
+            # Extract campaign goal from task description
+            campaign_goal = "Promote products and drive conversions"
+            if "campaign goal:" in task_desc.lower():
+                goal_match = re.search(
+                    r"campaign goal[:\s]+(.+?)(?:\.|$)", task_desc, re.IGNORECASE
+                )
+                if goal_match:
+                    campaign_goal = goal_match.group(1).strip()
+
+            # Get output directory from URL
+            output_dir = None
+            url_match = re.search(r"https?://[^\s,]+", self.objective)
+            if url_match:
+                url = url_match.group(0).rstrip(".,;:)")
+                _, domain = normalize_url(url)
+                output_dir = f"output/{domain}/emails"
+
+            output = execute_ability(
+                task.ability,
+                full_dependency_output.strip(),  # Pass brand intelligence JSON
+                campaign_goal=campaign_goal,
+                output_dir=output_dir,
+                task_id=task.id,
+            )
         else:
             output = execute_ability(task.ability, task_desc, task_id=task.id)
 
@@ -187,7 +217,7 @@ class TaskManager:
         except ImportError:
 
             class Fore:
-                CYAN = GREEN = YELLOW = RED = BLUE = ""
+                CYAN = GREEN = YELLOW = RED = BLUE = WHITE = ""
 
             class Style:
                 BRIGHT = RESET_ALL = ""
