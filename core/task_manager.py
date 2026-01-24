@@ -3,7 +3,10 @@ Task manager for creating, validating, and executing tasks
 """
 
 import logging
+import re
 from typing import List, Optional
+
+from colorama import Fore, Style
 
 from abilities.ability_registry import execute_ability
 from config.settings import get_setting
@@ -12,8 +15,19 @@ from models.task import Task
 from utils.agent_loader import get_prompt_template
 from utils.json_parser import extract_json_from_text
 from utils.prompt_logger import log_prompt
+from utils.url_normalizer import normalize_url
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_domain_from_url(text: str) -> Optional[str]:
+    """Extract clean domain from a URL in text"""
+    match = re.search(r"https?://[^\s,]+", text)
+    if match:
+        url = match.group(0).rstrip(".,;:)")
+        _, domain = normalize_url(url)
+        return domain
+    return None
 
 
 class TaskManager:
@@ -26,23 +40,10 @@ class TaskManager:
 
     def create_initial_tasks(self) -> List[Task]:
         """Create the initial task list using AI"""
-        # Import colors
-        try:
-            from colorama import Fore, Style
-        except ImportError:
-
-            class Fore:
-                CYAN = ""
-
-            class Style:
-                RESET_ALL = ""
-
         print(f"{Fore.CYAN}Creating task plan...{Style.RESET_ALL}")
-        logger.debug("Creating initial task list")
 
         template_name = get_setting("PROMPT_TEMPLATE", "default_tasks")
         prompt = get_prompt_template(template_name, objective=self.objective)
-
         response = execute_ability("text-completion", prompt, task_id=0, role="planner")
 
         log_prompt(
@@ -56,11 +57,11 @@ class TaskManager:
 
         json_data = extract_json_from_text(response)
         if not json_data:
-            logger.error("No valid JSON found in response")
+            logger.error("Failed to parse task list from LLM response")
+            print(f"{Fore.RED}Error: Could not create task plan{Style.RESET_ALL}")
             return []
 
         self.tasks = [Task.from_dict(item) for item in json_data]
-        logger.debug(f"Created {len(self.tasks)} tasks")
         return self.tasks
 
     def get_task_by_id(self, task_id: int) -> Optional[Task]:
@@ -71,195 +72,95 @@ class TaskManager:
         return None
 
     def find_next_task(self) -> Optional[Task]:
-        """Find the next executable task"""
+        """Find the next executable task (incomplete with all dependencies met)"""
         for task in self.tasks:
-            if task.status == "incomplete":
-                # Check dependencies
-                can_execute = True
-                for dep_id in task.dependent_task_ids:
-                    dep_task = self.get_task_by_id(dep_id)
-                    if not dep_task or dep_task.status != "complete":
-                        can_execute = False
-                        break
+            if task.status != "incomplete":
+                continue
 
-                if can_execute:
-                    return task
+            deps_met = all(
+                self.get_task_by_id(dep_id)
+                and self.get_task_by_id(dep_id).status == "complete"
+                for dep_id in task.dependent_task_ids
+            )
+            if deps_met:
+                return task
         return None
 
     def execute_task(self, task: Task) -> Result:
         """Execute a task and return the result"""
-        # Import colors
-        try:
-            from colorama import Fore, Style
-        except ImportError:
-
-            class Fore:
-                CYAN = GREEN = YELLOW = BLUE = WHITE = ""
-
-            class Style:
-                BRIGHT = RESET_ALL = ""
-
-        # Get task description
-        task_desc = getattr(
-            task, "description", getattr(task, "task", f"Task #{task.id}")
-        )
-
-        # Truncate long descriptions for console
-        display_desc = task_desc if len(task_desc) <= 100 else task_desc[:97] + "..."
+        task_desc = task.description or f"Task #{task.id}"
+        display_desc = task_desc[:97] + "..." if len(task_desc) > 100 else task_desc
 
         print(
             f"\n{Fore.YELLOW}▶ Executing Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
         )
         print(f"  {display_desc}\n")
 
-        logger.debug(f"Executing task #{task.id}: {task_desc}")
-
-        # Prepare context from dependencies
-        context = ""
-        full_dependency_output = ""  # Full output for abilities that need it
+        # Collect dependency outputs
+        dep_outputs = []
         for dep_id in task.dependent_task_ids:
             dep_task = self.get_task_by_id(dep_id)
             if dep_task and dep_task.output:
-                context += (
-                    f"\n\nOutput from task #{dep_id}:\n{dep_task.output[:500]}..."
-                )
-                full_dependency_output += f"\n\n{dep_task.output}"
+                dep_outputs.append(dep_task.output)
 
-        # Build prompt
-        task_prompt = f"Complete this task: {task_desc}\nObjective: {self.objective}"
-        if context:
-            task_prompt += f"\n\nPrevious outputs:{context}"
+        full_dependency_output = "\n\n".join(dep_outputs)
+        context = "\n\n".join(
+            f"Output from task #{dep_id}:\n{out[:500]}..."
+            for dep_id, out in zip(task.dependent_task_ids, dep_outputs)
+        )
 
-        # Execute ability
+        # Execute based on ability type
+        output = self._execute_ability(task, task_desc, full_dependency_output, context)
+
+        task.mark_complete(output)
+        self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
+
+        print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
+        return Result(task_id=task.id, content=output, success=True)
+
+    def _execute_ability(
+        self, task: Task, task_desc: str, full_dep_output: str, context: str
+    ) -> str:
+        """Execute the appropriate ability for a task"""
+        domain = _extract_domain_from_url(self.objective)
+
         if task.ability == "text-completion":
-            role = self._determine_role(task_desc)
-            output = execute_ability(
-                task.ability, task_prompt, task_id=task.id, role=role
-            )
-        elif task.ability == "save-email-templates":
-            # Extract domain from objective URL using url_normalizer
-            import re
-
-            from utils.url_normalizer import normalize_url
-
-            domain = None
-            # Try to extract URL from objective
-            url_match = re.search(r"https?://[^\s,]+", self.objective)
-            if url_match:
-                url = url_match.group(0).rstrip(".,;:)")
-                _, domain = normalize_url(url)  # Returns (base_url, clean_domain)
-
-            output = execute_ability(
+            prompt = f"Complete this task: {task_desc}\nObjective: {self.objective}"
+            if context:
+                prompt += f"\n\nPrevious outputs:{context}"
+            return execute_ability(
                 task.ability,
-                full_dependency_output.strip(),  # Pass full HTML content
-                domain=domain,
+                prompt,
                 task_id=task.id,
+                role=self._determine_role(task_desc),
             )
-        elif task.ability == "email-design":
-            # email-design needs the brand intelligence JSON from dependencies
-            import re
 
-            from utils.url_normalizer import normalize_url
+        if task.ability == "save-email-templates":
+            return execute_ability(
+                task.ability, full_dep_output.strip(), domain=domain, task_id=task.id
+            )
 
-            # Extract campaign goal from task description
-            campaign_goal = "Promote products and drive conversions"
-            if "campaign goal:" in task_desc.lower():
-                goal_match = re.search(
-                    r"campaign goal[:\s]+(.+?)(?:\.|$)", task_desc, re.IGNORECASE
-                )
-                if goal_match:
-                    campaign_goal = goal_match.group(1).strip()
-
-            # Get output directory from URL
-            output_dir = None
-            url_match = re.search(r"https?://[^\s,]+", self.objective)
-            if url_match:
-                url = url_match.group(0).rstrip(".,;:)")
-                _, domain = normalize_url(url)
-                output_dir = f"output/{domain}/emails"
-
-            output = execute_ability(
+        if task.ability == "email-design":
+            campaign_goal = self._extract_campaign_goal(task_desc)
+            output_dir = f"output/{domain}/emails" if domain else None
+            return execute_ability(
                 task.ability,
-                full_dependency_output.strip(),  # Pass brand intelligence JSON
+                full_dep_output.strip(),
                 campaign_goal=campaign_goal,
                 output_dir=output_dir,
                 task_id=task.id,
             )
-        else:
-            output = execute_ability(task.ability, task_desc, task_id=task.id)
 
-        # Log execution is handled by execute_ability in ability_registry
+        return execute_ability(task.ability, task_desc, task_id=task.id)
 
-        # Update task
-        task.mark_complete(output)
-        self.session_summary += f"\n\nTask {task.id} - {task_desc}:\n{output}"
-
-        # Import colors for completion message
-        try:
-            from colorama import Fore, Style
-        except ImportError:
-
-            class Fore:
-                GREEN = ""
-
-            class Style:
-                RESET_ALL = ""
-
-        print(f"{Fore.GREEN}✓ Task #{task.id} completed{Style.RESET_ALL}\n")
-        logger.debug(f"Task #{task.id} completed")
-        return Result(task_id=task.id, content=output, success=True)
-
-    def print_task_list(self) -> None:
-        """Print the current task list in a readable format"""
-        # Import colors
-        try:
-            from colorama import Fore, Style
-        except ImportError:
-
-            class Fore:
-                CYAN = GREEN = YELLOW = RED = BLUE = WHITE = ""
-
-            class Style:
-                BRIGHT = RESET_ALL = ""
-
-        print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
-
-        for task in self.tasks:
-            # Status indicator
-            if task.status.value == "complete":
-                status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
-            elif task.status.value == "incomplete":
-                status_icon = f"{Fore.YELLOW}○{Style.RESET_ALL}"
-            else:
-                status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
-
-            # Task description
-            display_desc = task._additional_attributes.get("insight", task.description)
-
-            # Truncate long descriptions
-            if len(display_desc) > 120:
-                display_desc = display_desc[:117] + "..."
-
-            # Print task header
-            print(
-                f"{status_icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
-            )
-            print(f"  {display_desc}")
-
-            # Print dependencies if any
-            if task.dependent_task_ids:
-                deps = ", ".join([f"#{d}" for d in task.dependent_task_ids])
-                print(f"  {Fore.YELLOW}Depends on:{Style.RESET_ALL} {deps}")
-
-            print()  # Blank line between tasks
-
-        print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
-
-    def get_session_summary(self) -> str:
-        """Get the current session summary"""
-        return self.session_summary
+    def _extract_campaign_goal(self, task_desc: str) -> str:
+        """Extract campaign goal from task description"""
+        match = re.search(r"campaign goal[:\s]+(.+?)(?:\.|$)", task_desc, re.IGNORECASE)
+        return (
+            match.group(1).strip()
+            if match
+            else "Promote products and drive conversions"
+        )
 
     def _determine_role(self, task_desc: str) -> str:
         """Determine AI role based on task description"""
@@ -267,11 +168,41 @@ class TaskManager:
 
         if any(k in task_lower for k in ["plan", "design", "outline", "structure"]):
             return "planner"
-        elif any(k in task_lower for k in ["review", "analyze", "evaluate", "check"]):
+        if any(k in task_lower for k in ["review", "analyze", "evaluate", "check"]):
             return "reviewer"
-        elif any(
-            k in task_lower for k in ["execute", "implement", "generate", "write"]
-        ):
+        if any(k in task_lower for k in ["execute", "implement", "generate", "write"]):
             return "executor"
-        else:
-            return "orchestrator"
+        return "orchestrator"
+
+    def print_task_list(self) -> None:
+        """Print the current task list"""
+        print(f"\n{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}TASK LIST{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{'─' * 80}{Style.RESET_ALL}\n")
+
+        status_icons = {
+            "complete": f"{Fore.GREEN}✓{Style.RESET_ALL}",
+            "incomplete": f"{Fore.YELLOW}○{Style.RESET_ALL}",
+            "failed": f"{Fore.RED}✗{Style.RESET_ALL}",
+        }
+
+        for task in self.tasks:
+            icon = status_icons.get(task.status.value, f"{Fore.RED}?{Style.RESET_ALL}")
+            desc = task._additional_attributes.get("insight", task.description)
+            desc = desc[:117] + "..." if len(desc) > 120 else desc
+
+            print(
+                f"{icon} {Fore.YELLOW}Task #{task.id}{Style.RESET_ALL} [{Fore.WHITE}{task.ability}{Style.RESET_ALL}]"
+            )
+            print(f"  {desc}")
+
+            if task.dependent_task_ids:
+                deps = ", ".join(f"#{d}" for d in task.dependent_task_ids)
+                print(f"  {Fore.YELLOW}Depends on:{Style.RESET_ALL} {deps}")
+            print()
+
+        print(f"{Fore.CYAN}{'─' * 80}{Style.RESET_ALL}\n")
+
+    def get_session_summary(self) -> str:
+        """Get the current session summary"""
+        return self.session_summary
