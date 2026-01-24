@@ -78,6 +78,102 @@ def _update_crawler_summary(task_manager: TaskManager, execution_time: float) ->
         )
 
 
+def _save_intelligence_output(task_manager: TaskManager, objective: str) -> None:
+    """
+    Save the final intelligence JSON to output folder if:
+    1. Objective contains a URL
+    2. Final task output contains JSON with intelligence_report or email_campaign_recommendations
+    """
+    import re
+
+    try:
+        from colorama import Fore, Style
+    except ImportError:
+
+        class Fore:
+            GREEN = ""
+
+        class Style:
+            RESET_ALL = ""
+
+    # Extract URL from objective
+    url_match = re.search(r"https?://[^\s,;:)]+", objective)
+    if not url_match:
+        return
+
+    url = url_match.group(0).rstrip(".,;:)")
+
+    # Get the last completed task's output
+    completed_tasks = [
+        t for t in task_manager.tasks if t.status == "complete" and t.output
+    ]
+    if not completed_tasks:
+        return
+
+    last_task = completed_tasks[-1]
+    output = last_task.output
+
+    # Try to extract JSON from the output
+    json_data = None
+
+    # Check if output contains a JSON code block
+    json_match = re.search(r"```json\s*([\s\S]*?)\s*```", output)
+    if json_match:
+        try:
+            json_data = json.loads(json_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # If no code block, try parsing the whole output as JSON
+    if not json_data:
+        try:
+            json_data = json.loads(output)
+        except json.JSONDecodeError:
+            pass
+
+    # Check if it looks like an intelligence report
+    if not json_data:
+        return
+
+    if not isinstance(json_data, dict):
+        return
+
+    # Must have intelligence_report or email_campaign_recommendations
+    if (
+        "intelligence_report" not in json_data
+        and "email_campaign_recommendations" not in json_data
+    ):
+        return
+
+    # Save to output folder
+    try:
+        from utils.output_manager import create_output_session
+        from utils.url_normalizer import normalize_url
+
+        normalized_url, clean_domain = normalize_url(url)
+        output_manager = create_output_session(clean_domain)
+
+        # Save intelligence JSON
+        intelligence_path = output_manager.save_data("intelligence.json", json_data)
+        logger.info(f"Saved intelligence report to {intelligence_path}")
+
+        # Create/update summary
+        output_manager.create_summary(
+            url=normalized_url,
+            pages_crawled=1,
+            screenshots_taken=0,
+            emails_generated=0,
+            additional_info={"source": "website_intelligence_agent"},
+        )
+
+        print(
+            f"\n{Fore.GREEN}Saved intelligence to: {intelligence_path}{Style.RESET_ALL}"
+        )
+
+    except Exception as e:
+        logger.warning(f"Failed to save intelligence output: {e}")
+
+
 def run_execution_loop(objective: str) -> str:
     """Run the main execution loop and return the result file path"""
     logger.info(f"Starting: {objective}")
@@ -137,6 +233,9 @@ def run_execution_loop(objective: str) -> str:
 
     # Update output summary with task details if web crawler was used
     _update_crawler_summary(task_manager, execution_time)
+
+    # Save intelligence JSON to output folder if objective contains a URL
+    _save_intelligence_output(task_manager, objective)
 
     # Save results to markdown file
     output_dir = "sessions"
