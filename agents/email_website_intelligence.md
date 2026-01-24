@@ -1,5 +1,5 @@
 ---
-name: website_intelligence_agent
+name: email_website_intelligence
 description: Deep website analysis for email campaign generation - extracts brand identity, products, messaging, and customer insights
 author: ReasonLoop
 version: 1.0
@@ -43,5 +43,7 @@ Intelligence to extract:
 
 The final task should compile all findings into a comprehensive JSON intelligence report with email campaign recommendations.
 
+IMPORTANT: Every task description MUST include the full URL ({objective}) so each ability knows which website to analyze.
+
 Example response format:
-[{"id": 1, "task": "Scrape the homepage of https://example.com to extract brand identity including logo URL, brand colors, tagline, and mission statement", "ability": "web-scrape", "dependent_task_ids": [], "status": "incomplete"}, {"id": 2, "task": "Analyze the navigation and product pages to extract product categories, pricing tiers, and featured items", "ability": "web-scrape", "dependent_task_ids": [1], "status": "incomplete"}]
+[{"id": 1, "task": "Scrape the homepage of {objective} to extract brand identity including logo URL, brand colors, tagline, and mission statement", "ability": "web-scrape", "dependent_task_ids": [], "status": "incomplete"}, {"id": 2, "task": "Analyze {objective} navigation and product pages to extract product categories, pricing tiers, and featured items", "ability": "web-scrape", "dependent_task_ids": [1], "status": "incomplete"}]

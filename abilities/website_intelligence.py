@@ -664,12 +664,12 @@ class WebsiteIntelligenceExtractor:
         return [v for v, _ in counts.most_common(limit)]
 
 
-def website_intelligence_ability(url: str) -> str:
+def website_intelligence_ability(task_input: str) -> str:
     """
     Extract comprehensive website intelligence for email campaign generation
 
     Args:
-        url: Target website URL
+        task_input: Task description that may contain a URL
 
     Returns:
         JSON string with complete website intelligence
@@ -679,17 +679,17 @@ def website_intelligence_ability(url: str) -> str:
     from utils.output_manager import create_output_session
     from utils.url_normalizer import normalize_url
 
-    logger.info(f"Starting website intelligence extraction for: {url}")
+    logger.info(f"Starting website intelligence extraction for: {task_input[:100]}")
 
-    # Clean URL
-    url = url.strip()
-    if not url.startswith("http"):
-        url_match = re.search(r"https?://[^\s]+", url)
-        if url_match:
-            url = url_match.group(0)
-        else:
-            # Assume https
-            url = f"https://{url}"
+    # Extract URL from task input
+    url_match = re.search(r"https?://[^\s,;:)]+", task_input)
+    if url_match:
+        url = url_match.group(0).rstrip(".,;:)")
+    else:
+        logger.error(f"No URL found in task: {task_input[:100]}")
+        return json.dumps(
+            {"error": "No URL found in task description", "input": task_input[:200]}
+        )
 
     # Normalize URL and create output session
     normalized_url, clean_domain = normalize_url(url)
