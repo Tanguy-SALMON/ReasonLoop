@@ -1,9 +1,7 @@
 """
 Internal API Routes - Secured endpoints for service-to-service communication
 
-These endpoints are designed for the sidecar microservice pattern where
-be-campaign (main backend) communicates with ReasonLoop (AI agent service).
-
+These endpoints are designed for integrating ReasonLoop with external services.
 All endpoints require the X-Internal-Secret header for authentication.
 """
 
@@ -234,7 +232,6 @@ async def analyze_website(request: AnalysisRequest) -> AnalysisResponse:
     Analyze a website and extract brand intelligence for email campaign generation.
 
     This endpoint is designed for internal service-to-service communication.
-    The main backend (be-campaign) calls this to enrich customer data.
     """
     import time
 

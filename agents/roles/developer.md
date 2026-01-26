@@ -24,15 +24,23 @@ You are an **Expert Email Developer** with deep knowledge of email HTML/CSS quir
 {design_specs}
 
 ## OUTPUT FORMAT
-Return the complete HTML email wrapped in a code block:
+Return the complete HTML email wrapped in a code block.
+
+**CRITICAL**: Include a persona marker comment at the VERY START of your HTML (before DOCTYPE).
+This marker MUST match the persona you're building for:
+- `<!-- TEMPLATE: MINIMALIST -->` for minimalist persona
+- `<!-- TEMPLATE: BOLD -->` for bold persona  
+- `<!-- TEMPLATE: ELEGANT -->` for elegant persona
 
 ```html
+<!-- TEMPLATE: [PERSONA_NAME] -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Title</title>
+  <meta name="persona" content="[persona_name]">
+  <title>[Persona Name] - Email Title</title>
   <!--[if mso]>
   <style type="text/css">
     /* Outlook-specific styles */

@@ -237,12 +237,19 @@ def run_execution_loop(objective: str) -> tuple:
             # Check if all tasks are actually completed or some failed
             if failed_tasks == 0 and completed_tasks == total_tasks:
                 print(f"\n{Fore.GREEN}✓ All tasks completed!{Style.RESET_ALL}\n")
+                logger.info("All tasks completed successfully")
             elif failed_tasks > 0:
                 print(
                     f"\n{Fore.RED}✗ Execution stopped: {failed_tasks} task(s) failed{Style.RESET_ALL}\n"
                 )
+                logger.error(
+                    f"EXECUTION STOPPED - {failed_tasks} task(s) failed out of {total_tasks}"
+                )
             else:
                 print(f"\n{Fore.YELLOW}⚠ No more executable tasks{Style.RESET_ALL}\n")
+                logger.warning(
+                    f"No more executable tasks - {completed_tasks}/{total_tasks} completed"
+                )
             break
 
         result = task_manager.execute_task(next_task)
@@ -250,7 +257,10 @@ def run_execution_loop(objective: str) -> tuple:
             completed_tasks += 1
         else:
             failed_tasks += 1
-            logger.error(f"Task #{next_task.id} failed: {result.error}")
+            # Detailed error already logged in task_manager, just log summary here
+            logger.error(
+                f"Task #{next_task.id} execution failed - see detailed error above"
+            )
 
         time.sleep(0.3)
 
@@ -269,13 +279,14 @@ def run_execution_loop(objective: str) -> tuple:
     output_dir = "sessions"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create filename from objective (first 100 chars, sanitized)
+    # Create filename with timestamp first for chronological sorting
+    # Format: YYYYMMDD_HHMMSS_objective_name.md
     safe_name = "".join(
-        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in objective[:100]
+        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in objective[:80]
     )
     safe_name = safe_name.strip().replace(" ", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{output_dir}/{safe_name}_{timestamp}.md"
+    filename = f"{output_dir}/{timestamp}_{safe_name}.md"
 
     summary = task_manager.get_session_summary()
 

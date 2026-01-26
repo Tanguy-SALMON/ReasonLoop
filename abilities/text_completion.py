@@ -2,9 +2,11 @@
 
 import json
 import logging
+import time
 from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
+from requests.exceptions import ConnectionError, ReadTimeout, Timeout
 
 from config.settings import get_model_for_provider, get_setting
 
@@ -100,15 +102,42 @@ class XAIProvider:
             "max_tokens": get_setting("LLM_MAX_TOKENS", 4096),
         }
 
-        response = requests.post(self.api_url, headers=headers, json=data, timeout=30)
-        response.raise_for_status()
-        result = response.json()
+        # Use longer timeout for XAI - HTML generation can take 60+ seconds
+        timeout = int(get_setting("XAI_TIMEOUT", 120))
+        max_retries = int(get_setting("XAI_MAX_RETRIES", 3))
 
-        # Log the full API response for debugging
-        self.logger.debug(f"XAI API Response: {json.dumps(result, indent=2)}")
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    self.api_url, headers=headers, json=data, timeout=timeout
+                )
+                response.raise_for_status()
+                result = response.json()
 
-        content = result["choices"][0]["message"]["content"]
-        return content, result
+                # Log the full API response for debugging
+                self.logger.debug(f"XAI API Response: {json.dumps(result, indent=2)}")
+
+                content = result["choices"][0]["message"]["content"]
+                return content, result
+
+            except (Timeout, ReadTimeout, ConnectionError) as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
+                    self.logger.warning(
+                        f"XAI API timeout/connection error (attempt {attempt + 1}/{max_retries}), "
+                        f"retrying in {wait_time}s: {str(e)}"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    self.logger.error(
+                        f"XAI API failed after {max_retries} attempts: {str(e)}"
+                    )
+                    raise
+
+        # Should not reach here, but just in case
+        raise last_error
 
     def get_usage(
         self, prompt: str, response: str, api_response: Dict

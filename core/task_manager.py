@@ -145,7 +145,15 @@ class TaskManager:
             for line in error_display.split("\n"):
                 print(f"  {line}")
             print(f"{Fore.RED}{'─' * 60}{Style.RESET_ALL}\n")
-            logger.error(f"Task #{task.id} failed: {output}")
+
+            # Log detailed error to file
+            logger.error(f"TASK FAILED - Task #{task.id}")
+            logger.error(f"  Description: {task_desc}")
+            logger.error(f"  Ability: {task.ability}")
+            logger.error(f"  Role: {role or 'none'}")
+            logger.error(f"  Dependencies: {task.dependent_task_ids}")
+            logger.error(f"  Error output: {output[:1000]}")
+
             return Result(task_id=task.id, content=output, success=False, error=output)
         else:
             task.mark_complete(output)

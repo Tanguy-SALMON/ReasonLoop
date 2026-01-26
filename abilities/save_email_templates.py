@@ -10,6 +10,72 @@ from typing import List, Tuple
 logger = logging.getLogger(__name__)
 
 
+def _detect_template_name_from_html(html: str, index: int) -> str:
+    """
+    Detect template name from HTML content using multiple strategies.
+
+    Priority order:
+    1. Explicit template comment markers (<!-- TEMPLATE: MINIMALIST -->)
+    2. Title tag content analysis
+    3. CSS class names containing persona keywords
+    4. Fallback to numbered template
+    """
+    html_lower = html.lower()
+
+    # Strategy 1: Look for explicit template markers in comments
+    # Patterns: <!-- TEMPLATE 1: MINIMALIST -->, <!-- MINIMALIST TEMPLATE -->, etc.
+    marker_patterns = [
+        r"<!--\s*TEMPLATE\s*\d*:?\s*(minimalist|bold|elegant)\s*-->",
+        r"<!--\s*(minimalist|bold|elegant)\s*template\s*-->",
+        r"<!--\s*(minimalist|bold|elegant)\s*email\s*-->",
+        r"<!--\s*persona:\s*(minimalist|bold|elegant)\s*-->",
+    ]
+    for pattern in marker_patterns:
+        match = re.search(pattern, html_lower)
+        if match:
+            return match.group(1)
+
+    # Strategy 2: Check <title> tag for persona keywords
+    title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_lower)
+    if title_match:
+        title = title_match.group(1)
+        # Check for persona keywords at the START of title or clearly indicated
+        if title.startswith("minimalist") or " - minimalist" in title:
+            return "minimalist"
+        elif title.startswith("bold") or " - bold" in title:
+            return "bold"
+        elif title.startswith("elegant") or " - elegant" in title:
+            return "elegant"
+        # Also check for clear persona indicators
+        if "elegant" in title and "minimalist" not in title and "bold" not in title:
+            return "elegant"
+        if "bold" in title and "minimalist" not in title and "elegant" not in title:
+            return "bold"
+        if "minimalist" in title and "bold" not in title and "elegant" not in title:
+            return "minimalist"
+
+    # Strategy 3: Check for persona-specific CSS class names (more reliable than body text)
+    # Look for classes like class="minimalist-header", class="bold-cta", etc.
+    class_patterns = [
+        (r'class="[^"]*\b(minimalist)\b[^"]*"', "minimalist"),
+        (r'class="[^"]*\b(bold)\b[^"]*"', "bold"),
+        (r'class="[^"]*\b(elegant)\b[^"]*"', "elegant"),
+    ]
+    for pattern, name in class_patterns:
+        if re.search(pattern, html_lower):
+            return name
+
+    # Strategy 4: Look for persona in meta tags
+    meta_match = re.search(
+        r'<meta[^>]*name="persona"[^>]*content="(minimalist|bold|elegant)"', html_lower
+    )
+    if meta_match:
+        return meta_match.group(1)
+
+    # Fallback: numbered template
+    return f"template_{index + 1}"
+
+
 def extract_html_templates(content: str) -> List[Tuple[str, str]]:
     """
     Extract HTML templates from content.
@@ -23,6 +89,7 @@ def extract_html_templates(content: str) -> List[Tuple[str, str]]:
         List of (template_name, html_content) tuples
     """
     templates = []
+    used_names = set()  # Track used names to avoid duplicates
 
     # Pattern 1: Look for labeled templates within a single HTML block
     # e.g., <!-- TEMPLATE 1: MINIMALIST -->
@@ -64,20 +131,23 @@ def extract_html_templates(content: str) -> List[Tuple[str, str]]:
                 # Single template without markers
                 templates.append(("email_template", single_block.strip()))
         else:
-            # Multiple separate HTML blocks
+            # Multiple separate HTML blocks - use smart detection
             for i, block in enumerate(html_blocks):
-                # Try to detect template name from content or comment
+                # First try explicit marker
                 name_match = re.search(template_pattern, block, re.IGNORECASE)
                 if name_match:
                     template_name = name_match.group(1).lower()
-                elif "minimalist" in block.lower():
-                    template_name = "minimalist"
-                elif "bold" in block.lower():
-                    template_name = "bold"
-                elif "elegant" in block.lower():
-                    template_name = "elegant"
                 else:
-                    template_name = f"template_{i + 1}"
+                    # Use smart detection
+                    template_name = _detect_template_name_from_html(block, i)
+
+                # Ensure unique names - if already used, append index
+                original_name = template_name
+                counter = 1
+                while template_name in used_names:
+                    template_name = f"{original_name}_{counter}"
+                    counter += 1
+                used_names.add(template_name)
 
                 templates.append((template_name, block.strip()))
 
@@ -88,12 +158,21 @@ def extract_html_templates(content: str) -> List[Tuple[str, str]]:
         html_docs = re.findall(doctype_pattern, content, re.IGNORECASE)
 
         for i, doc in enumerate(html_docs):
-            # Try to detect template name
+            # First try explicit marker
             name_match = re.search(template_pattern, doc, re.IGNORECASE)
             if name_match:
                 template_name = name_match.group(1).lower()
             else:
-                template_name = f"template_{i + 1}"
+                # Use smart detection
+                template_name = _detect_template_name_from_html(doc, i)
+
+            # Ensure unique names
+            original_name = template_name
+            counter = 1
+            while template_name in used_names:
+                template_name = f"{original_name}_{counter}"
+                counter += 1
+            used_names.add(template_name)
 
             templates.append((template_name, doc.strip()))
 

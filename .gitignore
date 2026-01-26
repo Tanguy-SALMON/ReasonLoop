@@ -1,10 +1,144 @@
 # =============================================================================
-# ReasonLoop Project - Restrictive .gitignore
+# ReasonLoop Project - Reversed Ruleset .gitignore
+# =============================================================================
+# Strategy: Ignore everything (*), then whitelist what should be tracked (!)
+# This ensures only intentional files are committed.
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Python
-# -----------------------------------------------------------------------------
+# Ignore everything by default
+*
+
+# =============================================================================
+# Root Files - Whitelist
+# =============================================================================
+!.gitignore
+!.env.example
+!README.md
+!CHANGELOG.md
+!ARCHITECTURE.md
+!AGENT_START_HERE.xml
+!main.py
+!run_api.py
+!pyproject.toml
+!poetry.lock
+!requirements.txt
+!create_admin_tables.sql
+
+# =============================================================================
+# Configuration - Whitelist
+# =============================================================================
+!.claude/
+!.claude/**
+!.githooks/
+!.githooks/**
+
+!config/
+!config/__init__.py
+!config/logging_config.py
+!config/settings.py
+!config/settings.json.example
+# NOTE: config/settings.json is NOT tracked (contains local settings)
+
+# =============================================================================
+# Core Application - Whitelist
+# =============================================================================
+!core/
+!core/__init__.py
+!core/*.py
+
+!models/
+!models/__init__.py
+!models/*.py
+
+!utils/
+!utils/__init__.py
+!utils/*.py
+
+# =============================================================================
+# Abilities (Agent Functions) - Whitelist
+# =============================================================================
+!abilities/
+!abilities/__init__.py
+!abilities/*.py
+
+# =============================================================================
+# Agents (Templates & Roles) - Whitelist
+# =============================================================================
+!agents/
+!agents/__init__.py
+!agents/*.md
+!agents/roles/
+!agents/roles/*.md
+# NOTE: agents/created/ is NOT tracked (auto-generated)
+
+# =============================================================================
+# API Server - Whitelist
+# =============================================================================
+!api/
+!api/__init__.py
+!api/*.py
+!api/core/
+!api/core/__init__.py
+!api/core/*.py
+!api/routes/
+!api/routes/__init__.py
+!api/routes/*.py
+!api/schemas/
+!api/schemas/__init__.py
+!api/schemas/*.py
+
+# =============================================================================
+# Database Schemas - Whitelist
+# =============================================================================
+!database/
+!database/*.sql
+
+# =============================================================================
+# Documentation - Whitelist
+# =============================================================================
+!DOCS/
+!DOCS/**
+!docs/
+!docs/**
+!PRP/
+!PRP/**
+
+# =============================================================================
+# Scripts - Whitelist
+# =============================================================================
+!scripts/
+!scripts/*.sh
+!scripts/*.py
+
+# =============================================================================
+# Package Module - Whitelist
+# =============================================================================
+!reasonloop/
+!reasonloop/__init__.py
+
+# =============================================================================
+# Experiments (optional tracking) - Whitelist
+# =============================================================================
+!experiments/
+!experiments/*.py
+!experiments/segmentation/
+!experiments/segmentation/*.py
+!experiments/tests/
+!experiments/tests/*.py
+
+# =============================================================================
+# NEVER TRACK - Explicit Exclusions (override any whitelist above)
+# =============================================================================
+# These patterns ensure sensitive/generated files are never tracked,
+# even if a parent directory is whitelisted.
+
+# Environment & Secrets
+.env
+.env.*
+*.env
+auth.json
+
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -12,132 +146,45 @@ __pycache__/
 *.egg
 *.egg-info/
 .eggs/
-*.manifest
-*.spec
-.installed.cfg
-pip-log.txt
-pip-delete-this-directory.txt
 
-# -----------------------------------------------------------------------------
-# Virtual Environments
-# -----------------------------------------------------------------------------
+# Virtual environments
 .venv/
 venv/
 env/
-ENV/
-.Python
 
-# -----------------------------------------------------------------------------
-# Distribution / Build
-# -----------------------------------------------------------------------------
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-
-# -----------------------------------------------------------------------------
-# Testing / Coverage
-# -----------------------------------------------------------------------------
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# -----------------------------------------------------------------------------
-# IDE / Editors
-# -----------------------------------------------------------------------------
+# IDE/Editor files
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-.history/
 
-# -----------------------------------------------------------------------------
-# OS Files
-# -----------------------------------------------------------------------------
+# OS files
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Desktop.ini
 
-# -----------------------------------------------------------------------------
-# Logs
-# -----------------------------------------------------------------------------
+# Generated output (runtime data)
+output/
+sessions/
 logs/
+metrics/
 *.log
 
-# -----------------------------------------------------------------------------
-# Environment / Secrets
-# -----------------------------------------------------------------------------
-.env
-.env.*
-*.env
-!.env.example
+# Build artifacts
+build/
+dist/
+*.manifest
 
-# -----------------------------------------------------------------------------
-# Project-specific: Generated Output
-# -----------------------------------------------------------------------------
-output/
+# Test/Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
 
-# Keep sessions/ tracked (execution results serve as examples)
-# Uncomment below if you want to ignore sessions:
-# sessions/
+# Jupyter
+.ipynb_checkpoints/
 
-# -----------------------------------------------------------------------------
-# Project-specific: Experiments & Tests
-# -----------------------------------------------------------------------------
-experiments/
-
-# -----------------------------------------------------------------------------
-# Project-specific: Agent Definitions
-# -----------------------------------------------------------------------------
+# Auto-generated agents
 agents/created/
 agents/meta_agent_creator*.md
-
-# Keep core agent definitions (exclude created/meta)
-!agents/*.md
-!agents/
-
-# Keep documentation
-!DOCS/
-!DOCS/**
-
-# -----------------------------------------------------------------------------
-# Project-specific: Runtime Data
-# -----------------------------------------------------------------------------
-metrics/
-!metrics/.gitkeep
-
-# -----------------------------------------------------------------------------
-# Project-specific: Local Config
-# -----------------------------------------------------------------------------
-config/settings.json
-Context.md
-
-# -----------------------------------------------------------------------------
-# Jupyter / Data
-# -----------------------------------------------------------------------------
-.ipynb_checkpoints/
-*.sqlite3
-
-# -----------------------------------------------------------------------------
-# Translations
-# -----------------------------------------------------------------------------
-*.mo
-*.pot

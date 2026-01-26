@@ -211,8 +211,8 @@ class MetricsManager:
         session = self._sessions[session_id]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Always save to default metrics directory
-        filename = f"{self._metrics_dir}/{session_id}_{timestamp}.json"
+        # Always save to default metrics directory (timestamp first for sorting)
+        filename = f"{self._metrics_dir}/{timestamp}_{session_id}.json"
         with open(filename, "w") as f:
             json.dump(session.to_dict(), f, indent=2)
         logger.info(f"Saved session metrics to {filename}")

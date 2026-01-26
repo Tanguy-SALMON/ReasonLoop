@@ -126,37 +126,6 @@ result = run_agent(
 )
 ```
 
-### Real-World Example: BE-Campaign Integration
-
-ReasonLoop is designed to be integrated into larger applications using an **Asynchronous Sidecar** strategy:
-
-- **Web Scraping**: Crawl client websites to extract brand assets
-- **AI Analysis**: Analyze brand identity, tone, colors, and products
-- **Data Enrichment**: Adjust email content tone based on brand intelligence
-- **Formatted Document Generation**: Create branded HTML templates and reports
-
-```python
-# In BE-Campaign's email automation workflow
-from reasonloop import run_agent
-
-# Step 1: Extract brand intelligence from client's website
-result = run_agent(
-    "email_website_intelligence",
-    "https://www.client-brand.com"
-)
-
-# Step 2: Generate branded email templates
-result = run_agent(
-    "email_campaign_generator",
-    "Generate emails for https://www.client-brand.com"
-)
-
-# Output saved to: output/www.client-brand.com/
-# ├── intelligence/    <- Brand data for tone adjustment
-# ├── emails/          <- Ready-to-use HTML templates
-# └── metrics/         <- Execution analytics
-```
-
 ---
 
 ### Adding New Abilities

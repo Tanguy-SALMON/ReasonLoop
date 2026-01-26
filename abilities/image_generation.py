@@ -58,11 +58,12 @@ class ImageGenerationProvider:
             "Authorization": f"Bearer {self.api_key}",
         }
 
+        # Note: XAI's grok-2-image-1212 does not support 'size' parameter
+        # Images are generated at a fixed resolution
         data = {
             "model": self.model,
             "prompt": prompt,
             "n": n,
-            "size": size,
             "response_format": response_format,
         }
 
